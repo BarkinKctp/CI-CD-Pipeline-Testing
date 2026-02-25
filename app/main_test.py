@@ -2,6 +2,7 @@ from app.main import return_backwards_string, get_mode
 import unittest
 import os
 
+# This is a sample test case for the main.py functions
 class TestMain(unittest.TestCase):
     def test_return_backwards_string(self):
         random_string = "Hello, World!"
