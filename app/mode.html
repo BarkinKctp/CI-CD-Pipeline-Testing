@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mode Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+    <main class="page-content">
+        <h1 class="headline box">Welcome to the Flask App</h1>
+        <p class="subheadline box">Environment mode page</p>
+
+        <div class="result-box box">
+            <p><strong>MODE:</strong> {{ mode_value }}</p>
+        </div>
+
+        <p class="helper box"><a href="{{ url_for('home') }}">Back to tester</a></p>
+    </main>
+</body>
+</html>

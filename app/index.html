@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask App Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+    <main class="page-content">
+        <h1 class="headline box">Welcome to the Flask App</h1>
+        <p class="subheadline box">This is a small demo application to test CI/CD pipelines.</p>
+
+            <div class="form-row box">
+                <input id="inputText" type="text" placeholder="Enter text (example: Testing123)">
+                <button id="reverseBtn" type="button">Reverse</button>
+            </div>
+
+            <div class="result-box box">
+                <p><strong>Input:</strong> <span id="inputValue">-</span></p>
+                <p><strong>Reversed:</strong> <span id="outputValue">-</span></p>
+            </div>
+
+            <p class="helper box">Direct URL test: <a href="/hello">/hello</a> returns <strong>olleh</strong></p>
+            <p class="helper box">Environment check: <a href="{{ url_for('get_mode') }}">/get-mode</a></p>
+    </main>
+
+    <script>
+        const input = document.getElementById('inputText');
+        const button = document.getElementById('reverseBtn');
+        const inputValue = document.getElementById('inputValue');
+        const outputValue = document.getElementById('outputValue');
+
+        async function runReverseTest() {
+            const value = input.value.trim();
+            if (!value) {
+                inputValue.textContent = '-';
+                outputValue.textContent = 'Please enter text first';
+                return;
+            }
+
+            inputValue.textContent = value;
+            const response = await fetch('/api/reverse/' + encodeURIComponent(value));
+            const reversed = await response.text();
+            outputValue.textContent = reversed;
+        }
+
+        button.addEventListener('click', runReverseTest);
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                runReverseTest();
+            }
+        });
+    </script>
+</body>
+</html>
