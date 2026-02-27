@@ -93,6 +93,19 @@ jobs:
             exit 1
           fi
 
+      - name: Configure startup command (Gunicorn)
+        run: |
+          APP_NAME="${{ steps.findapp.outputs.app_name || github.event.inputs.webapp_name || vars.WEBAPP_NAME }}"
+          RESOURCE_GROUP=$(az webapp list --query "[?name=='$APP_NAME'].resourceGroup | [0]" -o tsv)
+          if [ -z "$RESOURCE_GROUP" ]; then
+            echo "Unable to resolve resource group for app: $APP_NAME" >&2
+            exit 1
+          fi
+          az webapp config set \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"
+
       - name: "Deploy to Azure Web App"
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
