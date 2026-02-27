@@ -12,6 +12,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      webapp_name:
+        description: "Azure Web App name"
+        required: false
+        type: string
 
 jobs:
   build:
@@ -68,9 +73,29 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Find webapp by tag
+        id: findapp
+        run: |
+          APP_NAME=$(az webapp list --query "[?tags.repo=='CI-CD-Pipeline-Testing'].name | [0]" -o tsv)
+          if [ -n "$APP_NAME" ]; then
+            echo "Found webapp by tag: $APP_NAME"
+            echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "No webapp found with tag repo=CI-CD-Pipeline-Testing. Will try manual input if provided."
+            echo "app_name=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate resolved app name
+        run: |
+          RESOLVED_APP_NAME="${{ steps.findapp.outputs.app_name || github.event.inputs.webapp_name || vars.WEBAPP_NAME }}"
+          if [ -z "$RESOLVED_APP_NAME" ]; then
+            echo "No web app name resolved. Add tag repo=CI-CD-Pipeline-Testing to a web app, or provide workflow_dispatch input webapp_name, or set repository variable WEBAPP_NAME." >&2
+            exit 1
+          fi
+
       - name: "Deploy to Azure Web App"
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: "brk-flask-app-wapp"
+          app-name: ${{ steps.findapp.outputs.app_name || github.event.inputs.webapp_name || vars.WEBAPP_NAME }} # The name of your Azure Web App
           slot-name: "Production"
