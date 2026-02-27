@@ -1,0 +1,54 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "webAppName": {
+            "value": "demo-flask-wapp"
+        },
+        "appServicePlanName": {
+            "value": "demo-flask-wapp-plan"
+        },
+        "location": {
+            "value": "canadacentral"
+        },
+        "skuName": {
+            "value": "B1"
+        },
+        "skuTier": {
+            "value": "Basic"
+        },
+        "linuxFxVersion": {
+            "value": "PYTHON|3.14"
+        },
+        "startupCommand": {
+            "value": "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"
+        },
+        "managedIdentityName": {
+            "value": "demo-flask-wapp-oidc-mi"
+        },
+        "federatedCredentialName": {
+            "value": "github-main"
+        },
+        "githubOrganizationName": {
+            "value": "BarkinKctp"
+        },
+        "githubRepository": {
+            "value": "CI-CD-Pipeline-Testing"
+        },
+        "githubBranch": {
+            "value": "main"
+        },
+        "githubOidcIssuer": {
+            "value": "https://token.actions.githubusercontent.com"
+        },
+        "githubOidcAudience": {
+            "value": "api://AzureADTokenExchange"
+        },
+        "tags": {
+            "value": {
+                "repo": "CI-CD-Pipeline-Testing",
+                "environment": "dev"
+            }
+        }
+    }
+}

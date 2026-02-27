@@ -1,0 +1,240 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "webAppName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the Azure Web App."
+            }
+        },
+        "appServicePlanName": {
+            "type": "string",
+            "defaultValue": "[concat(parameters('webAppName'), '-plan')]",
+            "metadata": {
+                "description": "Name of the App Service plan."
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Azure region for resources."
+            }
+        },
+        "skuName": {
+            "type": "string",
+            "defaultValue": "B1",
+            "allowedValues": [
+                "B1",
+                "B2",
+                "B3",
+                "S1",
+                "S2",
+                "S3",
+                "P1v3",
+                "P2v3",
+                "P3v3"
+            ],
+            "metadata": {
+                "description": "App Service plan SKU."
+            }
+        },
+        "skuTier": {
+            "type": "string",
+            "defaultValue": "Basic",
+            "allowedValues": [
+                "Basic",
+                "Standard",
+                "PremiumV3"
+            ],
+            "metadata": {
+                "description": "App Service plan SKU tier."
+            }
+        },
+        "linuxFxVersion": {
+            "type": "string",
+            "defaultValue": "PYTHON|3.14",
+            "metadata": {
+                "description": "Linux runtime stack for Web App."
+            }
+        },
+        "startupCommand": {
+            "type": "string",
+            "defaultValue": "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app",
+            "metadata": {
+                "description": "Startup command for the Web App container."
+            }
+        },
+        "managedIdentityName": {
+            "type": "string",
+            "defaultValue": "[concat(parameters('webAppName'), '-oidc-mi')]",
+            "metadata": {
+                "description": "Name of the user-assigned managed identity for GitHub OIDC."
+            }
+        },
+        "federatedCredentialName": {
+            "type": "string",
+            "defaultValue": "github-main",
+            "metadata": {
+                "description": "Name of the federated credential on the user-assigned managed identity."
+            }
+        },
+        "githubOrganizationName": {
+            "type": "string",
+            "defaultValue": "BarkinKctp",
+            "metadata": {
+                "description": "GitHub organization or user name."
+            }
+        },
+        "githubRepository": {
+            "type": "string",
+            "defaultValue": "CI-CD-Pipeline-Testing",
+            "metadata": {
+                "description": "GitHub repository name."
+            }
+        },
+        "githubBranch": {
+            "type": "string",
+            "defaultValue": "main",
+            "metadata": {
+                "description": "GitHub branch name used by OIDC subject."
+            }
+        },
+        "githubOidcIssuer": {
+            "type": "string",
+            "defaultValue": "https://token.actions.githubusercontent.com",
+            "metadata": {
+                "description": "GitHub OIDC token issuer URL."
+            }
+        },
+        "githubOidcAudience": {
+            "type": "string",
+            "defaultValue": "api://AzureADTokenExchange",
+            "metadata": {
+                "description": "GitHub OIDC token audience."
+            }
+        },
+        "tags": {
+            "type": "object",
+            "defaultValue": {
+                "repo": "CI-CD-Pipeline-Testing"
+            },
+            "metadata": {
+                "description": "Tags applied to resources."
+            }
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2023-12-01",
+            "name": "[parameters('appServicePlanName')]",
+            "location": "[parameters('location')]",
+            "kind": "linux",
+            "sku": {
+                "name": "[parameters('skuName')]",
+                "tier": "[parameters('skuTier')]"
+            },
+            "properties": {
+                "reserved": true
+            },
+            "tags": "[parameters('tags')]"
+        },
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2025-01-31-preview",
+            "name": "[parameters('managedIdentityName')]",
+            "location": "[parameters('location')]",
+            "tags": "[parameters('tags')]"
+        },
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+            "apiVersion": "2025-01-31-preview",
+            "name": "[concat(parameters('managedIdentityName'), '/', parameters('federatedCredentialName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName'))]"
+            ],
+            "properties": {
+                "issuer": "[parameters('githubOidcIssuer')]",
+                "subject": "[format('repo:{0}/{1}:ref:refs/heads/{2}', parameters('githubOrganizationName'), parameters('githubRepository'), parameters('githubBranch'))]",
+                "audiences": [
+                    "[parameters('githubOidcAudience')]"
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2022-04-01",
+            "name": "[guid(resourceGroup().id, parameters('managedIdentityName'), 'WebsiteContributor')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'de139f84-1756-47ae-9be6-808fbbe84772')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'full').principalId]",
+                "principalType": "ServicePrincipal"
+            },
+            "scope": "[resourceGroup().id]"
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2023-12-01",
+            "name": "[parameters('webAppName')]",
+            "location": "[parameters('location')]",
+            "kind": "app,linux",
+            "identity": {
+                "type": "SystemAssigned,UserAssigned",
+                "userAssignedIdentities": {
+                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName'))]": {}
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                    "linuxFxVersion": "[parameters('linuxFxVersion')]",
+                    "alwaysOn": true,
+                    "appCommandLine": "[parameters('startupCommand')]",
+                    "appSettings": [
+                        {
+                            "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                            "value": "true"
+                        },
+                        {
+                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                            "value": "1"
+                        }
+                    ]
+                }
+            },
+            "tags": "[parameters('tags')]"
+        }
+    ],
+    "outputs": {
+        "webAppName": {
+            "type": "string",
+            "value": "[parameters('webAppName')]"
+        },
+        "webAppHostname": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Web/sites', parameters('webAppName'))).defaultHostName]"
+        },
+        "managedIdentityPrincipalId": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Web/sites', parameters('webAppName')), '2023-12-01', 'Full').identity.principalId]"
+        },
+        "userAssignedManagedIdentityClientId": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'Full').clientId]"
+        },
+        "userAssignedManagedIdentityPrincipalId": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'Full').principalId]"
+        }
+    }
+}

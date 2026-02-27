@@ -45,7 +45,7 @@ jobs:
         with:
           name: python-app
           path: |
-            app/
+            app/**
             requirements.txt
 
       # 🚫 Opting Out of Oryx Build
@@ -101,6 +101,7 @@ jobs:
             echo "Unable to resolve resource group for app: $APP_NAME" >&2
             exit 1
           fi
+
           az webapp config set \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
@@ -110,5 +111,6 @@ jobs:
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: ${{ steps.findapp.outputs.app_name || github.event.inputs.webapp_name || vars.WEBAPP_NAME }} # The name of your Azure Web App
+          app-name: ${{ steps.findapp.outputs.app_name || github.event.inputs.webapp_name || vars.WEBAPP_NAME }}
           slot-name: "Production"
+          package: .
