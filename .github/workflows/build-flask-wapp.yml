@@ -1,0 +1,148 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
+
+name: Build and deploy Python app to Azure Web App - brk-flask-app-wapp
+
+on:
+  workflow_dispatch:
+    inputs:
+      webapp_name:
+        description: "Azure Web App name"
+        required: false
+        type: string
+      repo_name:
+        description: "Repository name to match in tag value (optional)"
+        required: false
+        type: string
+      tag_key:
+        description: "Tag key used for lookup when webapp_name is not provided"
+        required: false
+        default: "repo"
+        type: string
+      tag_value:
+        description: "Explicit tag value override for lookup (optional)"
+        required: false
+        type: string
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      # 🛠️ Local Build Section (Optional)
+      # The following section in your workflow is designed to catch build issues early on the client side, before deployment. This can be helpful for debugging and validation. However, if this step significantly increases deployment time and early detection is not critical for your workflow, you may remove this section to streamline the deployment process.
+      - name: Create and Start virtual environment and Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # By default, when you enable GitHub CI/CD integration through the Azure portal, the platform automatically sets the SCM_DO_BUILD_DURING_DEPLOYMENT application setting to true. This triggers the use of Oryx, a build engine that handles application compilation and dependency installation (e.g., pip install) directly on the platform during deployment. Hence, we exclude the antenv virtual environment directory from the deployment artifact to reduce the payload size.
+      - name: Upload artifact for deployment jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: |
+            app/**
+            requirements.txt
+
+      # 🚫 Opting Out of Oryx Build
+      # If you prefer to disable the Oryx build process during deployment, follow these steps:
+      # 1. Remove the SCM_DO_BUILD_DURING_DEPLOYMENT app setting from your Azure App Service Environment variables.
+      # 2. Refer to sample workflows for alternative deployment strategies: https://github.com/Azure/actions-workflow-samples/tree/master/AppService
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve web app name (dispatch > repo var > tag)
+        id: resolveapp
+        run: |
+          INPUT_APP_NAME="${{ github.event.inputs.webapp_name || '' }}"
+          INPUT_REPO_NAME="${{ github.event.inputs.repo_name || '' }}"
+          INPUT_TAG_KEY="${{ github.event.inputs.tag_key || 'repo' }}"
+          INPUT_TAG_VALUE="${{ github.event.inputs.tag_value || '' }}"
+          REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
+          DEFAULT_REPO_NAME="${GITHUB_REPOSITORY#*/}"
+
+          if [ -n "$INPUT_TAG_VALUE" ]; then
+            EFFECTIVE_TAG_VALUE="$INPUT_TAG_VALUE"
+          elif [ -n "$INPUT_REPO_NAME" ]; then
+            EFFECTIVE_TAG_VALUE="$INPUT_REPO_NAME"
+          else
+            EFFECTIVE_TAG_VALUE="$DEFAULT_REPO_NAME"
+          fi
+
+          if [ -n "$INPUT_APP_NAME" ]; then
+            RESOLVED_APP_NAME="$INPUT_APP_NAME"
+            echo "Using workflow_dispatch input webapp_name: $RESOLVED_APP_NAME"
+          elif [ -n "$REPO_APP_NAME" ]; then
+            RESOLVED_APP_NAME="$REPO_APP_NAME"
+            echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
+          else
+            QUERY="[?tags['$INPUT_TAG_KEY']=='$EFFECTIVE_TAG_VALUE'].name | [0]"
+            RESOLVED_APP_NAME=$(az webapp list --query "$QUERY" -o tsv)
+            if [ -n "$RESOLVED_APP_NAME" ]; then
+              echo "Using web app found by tag $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE: $RESOLVED_APP_NAME"
+            fi
+          fi
+
+          if [ -z "$RESOLVED_APP_NAME" ]; then
+            echo "No web app name resolved. Provide workflow_dispatch input webapp_name, set repository variable WEBAPP_NAME, or tag a web app with $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE." >&2
+            exit 1
+          fi
+
+          echo "app_name=$RESOLVED_APP_NAME" >> $GITHUB_OUTPUT
+
+      - name: Configure startup command (Gunicorn)
+        run: |
+          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
+          RESOURCE_GROUP=$(az webapp list --query "[?name=='$APP_NAME'].resourceGroup | [0]" -o tsv)
+          if [ -z "$RESOURCE_GROUP" ]; then
+            echo "Unable to resolve resource group for app: $APP_NAME" >&2
+            exit 1
+          fi
+
+          az webapp config set \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"
+
+      - name: "Deploy to Azure Web App"
+        uses: azure/webapps-deploy@v3
+        id: deploy-to-webapp
+        with:
+          app-name: ${{ steps.resolveapp.outputs.app_name }}
+          slot-name: "Production"
+          package: .

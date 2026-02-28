@@ -61,9 +61,9 @@
         },
         "startupCommand": {
             "type": "string",
-            "defaultValue": "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app",
+            "defaultValue": "",
             "metadata": {
-                "description": "Startup command for the Web App container."
+                "description": "Optional startup command for the Web App container. Leave empty for initial provisioning before code deployment."
             }
         },
         "managedIdentityName": {
@@ -172,10 +172,9 @@
             ],
             "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'de139f84-1756-47ae-9be6-808fbbe84772')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'full').principalId]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'full').properties.principalId]",
                 "principalType": "ServicePrincipal"
-            },
-            "scope": "[resourceGroup().id]"
+            }
         },
         {
             "type": "Microsoft.Web/sites",
@@ -230,11 +229,11 @@
         },
         "userAssignedManagedIdentityClientId": {
             "type": "string",
-            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'Full').clientId]"
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'Full').properties.clientId]"
         },
         "userAssignedManagedIdentityPrincipalId": {
             "type": "string",
-            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'Full').principalId]"
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2025-01-31-preview', 'Full').properties.principalId]"
         }
     }
 }

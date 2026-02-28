@@ -2,6 +2,15 @@
 
 Simple test repository for practicing and validating CI/CD workflows.
 
+## Table of Contents
+- [What this repo is for](#what-this-repo-is-for)
+- [Local quick run](#local-quick-run)
+- [Azure getting started (quick)](#azure-getting-started-quick)
+- [ARM template deployment (same environment + managed identity)](#arm-template-deployment-same-environment--managed-identity)
+- [GitHub Actions deployment flow](#github-actions-deployment-flow)
+- [Troubleshooting](#troubleshooting)
+- [VS Code manual deploy](#vs-code-manual-deploy)
+
 ## What this repo is for
 - Running GitHub Actions checks
 - Verifying basic Python/Flask test flow
@@ -9,74 +18,126 @@ Simple test repository for practicing and validating CI/CD workflows.
 
 ## Local quick run
 - Create venv: `python -m venv .venv`
-- Activate venv: `.\.venv\Scripts\Activate.ps1`
+- Activate venv: `\.venv\Scripts\Activate.ps1`
 - Install deps: `pip install -r requirements.txt`
 
-## Notes
+## Azure getting started (quick)
+Prerequisites:
+- Install Azure CLI (`az`) locally.
 
-- Deployment is handled via GitHub Actions
-- Requires an Azure Web App (Basic tier or higher) for testing deployments
+Quick commands:
+```bash
+# Login
+az login
 
-## Azure Web App deployment (GitHub Actions)
+# List subscriptions
+az account list --output table
 
-> Important: This workflow deploys code to an existing Azure Web App. It does not create the Web App resource.
+# Set the subscription you want to deploy to
+az account set --subscription <your-subscription-id>
+```
 
-### 1) Create the Azure Web App first
-Create a Linux Python Web App before running the workflow.
+## ARM template deployment (same environment + managed identity)
+Use `arm/webapp-managed-identity.template.json` to recreate the baseline Azure setup.
 
-Option A (Azure Portal):
-- Go to **Create a resource -> Web App**.
-- Publish: **Code**.
-- Runtime stack: **Python**.
-- App service plan: **Basic tier or higher**.
-- Create the app and note the Web App name.
+PowerShell (Windows):
+- `$env:WEBAPP_NAME="my-webapp-name"`
+- `$env:LOCATION="canadacentral"`
+- `$env:GITHUB_ORGANIZATION_NAME="your-github-user-or-org"`
+- `./arm/deploy-webapp-from-env.ps1`
 
-Option B (VS Code Azure extension):
-- Install **Azure App Service** extension.
-- Open Azure view -> sign in.
-- In **App Service**, choose **Create New Web App...**.
-- Select **Python: 3.14** + **App service plan: Basic tier or higher** and complete prompts.
+Bash:
+- `export WEBAPP_NAME=my-webapp-name`
+- `export LOCATION=canadacentral`
+- `export GITHUB_ORGANIZATION_NAME=your-github-user-or-org`
+- `bash arm/deploy-webapp-from-env.sh`
 
-### 2) Create required GitHub secrets
-In your GitHub repository, go to **Settings -> Secrets and variables -> Actions -> Secrets** and add:
+PowerShell/Bash prompt cache behavior:
+- Script reuses values in the current shell session by default.
+- Force prompt without persisting new values: `./arm/deploy-webapp-from-env.ps1 -NoCache`
+- Clear cached prompt values first: `./arm/deploy-webapp-from-env.ps1 -ClearCache`
+
+- Force prompt and ignore shell-cached values: `bash arm/deploy-webapp-from-env.sh --no-cache`
+- Clear cached prompt values first: `bash arm/deploy-webapp-from-env.sh --clear-cache`
+
+Optional env vars:
+- `RESOURCE_GROUP` (default: `rg-<WEBAPP_NAME>`)
+- `APP_SERVICE_PLAN_NAME` (default: `<WEBAPP_NAME>-plan`)
+- `MANAGED_IDENTITY_NAME` (default: `<WEBAPP_NAME>-oidc-mi`)
+
+Prompt fallback behavior:
+- Scripts prompt for `WEBAPP_NAME`, `LOCATION`, and `GITHUB_ORGANIZATION_NAME`.
+- If you press Enter on prompts, scripts use defaults from `arm/webapp-managed-identity.parameters.json` (`webAppName`, `location`, `githubOrganizationName`).
+
+**Warnings:**
+- `WEBAPP_NAME` must be **globally unique** in Azure App Service.
+- **Not all Azure Locations may support all resource types or SKUs used in the template.**(**Canada Central** is **recommended** for testing).
+- Federated credential creation **can fail if organization/repository/branch values do not match your GitHub Actions OIDC subject.**
+
+
+Deploy directly with parameters JSON (no prompt):
+```bash
+az deployment group create \
+	--resource-group <your-rg> \
+	--template-file arm/webapp-managed-identity.template.json \
+	--parameters @arm/webapp-managed-identity.parameters.json
+```
+
+Creates:
+- Linux App Service Plan (B1)
+- Linux Python Web App (Python 3.14)
+- System-assigned managed identity
+- Startup command: empty by default during ARM provisioning (set later by deployment workflow or manual config)
+- Tags including `repo=CI-CD-Pipeline-Testing`
+
+## GitHub Actions deployment flow without ARM
+Important:
+- This workflow deploys to an existing Azure Web App; it does not create one.
+
+Create Web App first:
+- Option A (recommended): Azure Portal -> Web App -> enable automatic CI/CD during creation.
+- Option B: VS Code Azure App Service extension -> Create New Web App.
+
+If Web App already exists:
+- Configure Deployment Center.
+- Use Managed Identity or OIDC service principal for GitHub login. 
+- Create a federated identity credential for Github Actions
+- Ensure RBAC access on target subscription/resource group.
+
+Create GitHub secrets:
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
 
-These are used by `azure/login@v2` with OIDC.
+Notes:
+- `AZURE_CLIENT_ID` should match the identity/app registration used by your pipeline.
+- `AZURE_TENANT_ID` must match that identity tenant.
+- `AZURE_SUBSCRIPTION_ID` must be the target subscription.
 
-### 3) Configure how the workflow finds the Web App name
-The deploy workflow resolves the app name in this order:
-1. Azure Web App with tag `repo=CI-CD-Pipeline-Testing`
-2. Manual `workflow_dispatch` input: `webapp_name`
+Web App name resolution order in workflow:
+1. Tag lookup: `repo=CI-CD-Pipeline-Testing`
+2. `workflow_dispatch` input: `webapp_name`
 3. Repository variable: `WEBAPP_NAME`
 
-Recommended: set repository variable `WEBAPP_NAME` in **Settings -> Secrets and variables -> Actions -> Variables**.
+Trigger deployment:
+- Automatic: push/PR to `main`
+- Manual: run workflow from Actions and optionally pass `webapp_name`
 
-### 4) (Optional) Tag the target Azure Web App
-If you want automatic tag-based discovery, add this tag to your Web App:
-- Key: `repo`
-- Value: `CI-CD-Pipeline-Testing`
-
-### 5) Trigger deployment
-- Automatic deploy: push to `main` (or open/update PR to `main` for workflow checks).
-- Manual deploy: run the workflow from **Actions -> Build and deploy Python app to Azure Web App - brk-flask-app-wapp** and optionally provide `webapp_name`.
-
-### 6) Troubleshooting
-- If deploy fails with "No web app name resolved":
-	- Add the Azure tag `repo=CI-CD-Pipeline-Testing`, or
+## Troubleshooting
+- No web app name resolved:
+	- Add tag `repo=CI-CD-Pipeline-Testing`, or
 	- Provide `webapp_name` in manual run, or
-	- Set repository variable `WEBAPP_NAME`.
+	- Set repo variable `WEBAPP_NAME`
+- Azure login/OIDC failures:
+	- Verify client/tenant/subscription IDs
+	- Verify federated credential subject matches repo/branch/event
+	- Verify RBAC assignment exists for identity
 
-### 7) Deploy from VS Code Azure extension (manual)
-If you want to deploy without GitHub Actions:
-- Install **Azure App Service** extension in VS Code.
-- Open the Azure view, sign in, then locate your Web App.
-- Right-click the Web App -> **Deploy to Web App...**.
-- Select this repository folder when prompted.
-- After deploy, set Startup Command in Azure Web App config to:
-  - `gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app`
-
-This is a manual deployment path and does not replace the GitHub Actions workflow.
-
+## VS Code manual deploy
+- Install Azure App Service extension
+- Sign in and locate your Web App
+- Right-click -> **Deploy to Web App...**
+- Choose this repository folder
+- Set startup command in Web App config if needed:
+	- `gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app`
 
