@@ -115,6 +115,7 @@ fi
 echo "Warning: Web App name must be globally unique in Azure."
 echo "Warning: Not all Azure Locations may support all resource types or SKUs used in the template.(Canada Central is recommended for testing)."
 echo "Warning: Federated credential can fail if org/repo/branch do not match your GitHub workflow subject or if credential values differ unexpectedly."
+echo "Warning: Ensure Azure CLI is set to the intended subscription (az account set --subscription <id>) before deployment; otherwise managed identity role assignment may fail or apply in the wrong subscription."
 
 az deployment group create \
   --resource-group "$RESOURCE_GROUP" \

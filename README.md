@@ -73,6 +73,8 @@ Prompt fallback behavior:
 - `WEBAPP_NAME` must be **globally unique** in Azure App Service.
 - **Not all Azure Locations may support all resource types or SKUs used in the template.**(**Canada Central** is **recommended** for testing).
 - Federated credential creation **can fail if organization/repository/branch values do not match your GitHub Actions OIDC subject.**
+- Run `az account set --subscription <your-subscription-id>` before deployment; if the active subscription is wrong, managed identity role assignment can **fail or target the wrong scope.**
+
 
 
 Deploy directly with parameters JSON (no prompt):
