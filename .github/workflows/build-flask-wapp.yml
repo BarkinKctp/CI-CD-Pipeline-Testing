@@ -147,7 +147,17 @@ jobs:
             echo "Using provided resource_group: $REQUIRED_RESOURCE_GROUP"
           fi
 
-          if ! az webapp show --name "$APP_NAME" --resource-group "$REQUIRED_RESOURCE_GROUP" --output none; then
+          WEBAPP_SHOW_OUTPUT=$(az webapp show --name "$APP_NAME" --resource-group "$REQUIRED_RESOURCE_GROUP" --query name -o tsv 2>&1) || WEBAPP_SHOW_EXIT=$?
+          WEBAPP_SHOW_EXIT=${WEBAPP_SHOW_EXIT:-0}
+
+          if [ "$WEBAPP_SHOW_EXIT" -ne 0 ]; then
+            if echo "$WEBAPP_SHOW_OUTPUT" | grep -Eiq "AuthorizationFailed|does not have authorization"; then
+              echo "::error::Azure identity does not have permission to read web app '$APP_NAME' in resource group '$REQUIRED_RESOURCE_GROUP'."
+              echo "::error::Grant at least Reader on the target resource group (or Web App), then rerun."
+              echo "::error::Identity object id is shown in the Azure CLI error above."
+              exit 1
+            fi
+
             echo "::error::Web app '$APP_NAME' was not found in resource group '$REQUIRED_RESOURCE_GROUP' under subscription '$ACTIVE_SUBSCRIPTION_ID'."
             echo "::error::If your ARM deployment used a different RG name, provide workflow_dispatch input resource_group explicitly."
             echo "::error::Also verify AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, and AZURE_CLIENT_ID."
