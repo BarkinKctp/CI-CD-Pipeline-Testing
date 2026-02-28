@@ -136,6 +136,13 @@ jobs:
             if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
               RESOLVED_RESOURCE_GROUP=$(az resource list --name "$RESOLVED_APP_NAME" --resource-type Microsoft.Web/sites --query "[0].resourceGroup" -o tsv)
             fi
+            if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
+              CANDIDATE_RESOURCE_GROUP="rg-$RESOLVED_APP_NAME"
+              if az webapp show --name "$RESOLVED_APP_NAME" --resource-group "$CANDIDATE_RESOURCE_GROUP" --query "name" -o tsv >/dev/null 2>&1; then
+                RESOLVED_RESOURCE_GROUP="$CANDIDATE_RESOURCE_GROUP"
+                echo "Using naming-convention fallback resource group: $RESOLVED_RESOURCE_GROUP"
+              fi
+            fi
           fi
 
           if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
