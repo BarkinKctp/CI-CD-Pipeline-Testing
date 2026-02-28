@@ -34,7 +34,7 @@ jobs:
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.12"
 
       # 🛠️ Local Build Section (Optional)
       # The following section in your workflow is designed to catch build issues early on the client side, before deployment. This can be helpful for debugging and validation. However, if this step significantly increases deployment time and early detection is not critical for your workflow, you may remove this section to streamline the deployment process.
@@ -168,35 +168,6 @@ jobs:
           echo "Resolved resource group: $REQUIRED_RESOURCE_GROUP"
           echo "resource_group=$REQUIRED_RESOURCE_GROUP" >> $GITHUB_OUTPUT
 
-      - name: Configure startup command (Gunicorn)
-        run: |
-          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
-          RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
-
-          for i in {1..10}; do
-            echo "Setting startup command (attempt $i)..."
-            if az webapp config set \
-              --name "$APP_NAME" \
-              --resource-group "$RESOURCE_GROUP" \
-              --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"; then
-              echo "Startup command configured for $APP_NAME"
-              break
-            fi
-
-            if [ "$i" -eq 10 ]; then
-              echo "::error::Failed to set startup command for $APP_NAME after retries."
-              exit 1
-            fi
-
-            sleep 10
-          done
-
-          if az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP"; then
-            echo "Web app restarted after startup command update"
-          else
-            echo "Warning: Unable to restart web app after startup command update. Continuing deploy."
-          fi
-
       - name: Verify deploy package exists
         run: |
           if [ -d "./deploy_pkg/app" ] && [ -f "./deploy_pkg/requirements.txt" ]; then
@@ -207,10 +178,56 @@ jobs:
           fi
           ls -la ./deploy_pkg
 
-      - name: "Deploy to Azure Web App"
+      - name: Create deploy zip
+        run: |
+          cd deploy_pkg
+          zip -r ../deploy.zip .
+          cd ..
+          echo "Zip created:"
+          ls -lh deploy.zip
+          echo "Zip contents (top):"
+          unzip -l deploy.zip | head -n 60
+
+      - name: Deploy to Azure Web App (attempt 1)
+        id: deploy_to_webapp_attempt_1
         uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
+        continue-on-error: true
+        timeout-minutes: 10
         with:
           app-name: ${{ steps.resolveapp.outputs.app_name }}
-          slot-name: "Production"
-          package: ./deploy_pkg
+          slot-name: Production
+          package: deploy.zip
+
+      - name: Wait before retry
+        if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy to Azure Web App (attempt 2)
+        id: deploy_to_webapp_attempt_2
+        if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
+        uses: azure/webapps-deploy@v3
+        continue-on-error: true
+        timeout-minutes: 10
+        with:
+          app-name: ${{ steps.resolveapp.outputs.app_name }}
+          slot-name: Production
+          package: deploy.zip
+
+      - name: Configure startup command (Gunicorn) + restart
+        if: steps.deploy_to_webapp_attempt_1.outcome == 'success' || steps.deploy_to_webapp_attempt_2.outcome == 'success'
+        run: |
+          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
+          RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
+
+          az webapp config set \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"
+
+          az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP"
+
+      - name: Fail if deployment did not succeed
+        if: steps.deploy_to_webapp_attempt_1.outcome == 'failure' && steps.deploy_to_webapp_attempt_2.outcome == 'failure'
+        run: |
+          echo "::error::Deployment failed in both attempts."
+          exit 1

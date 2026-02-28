@@ -18,7 +18,7 @@
             "value": "Basic"
         },
         "linuxFxVersion": {
-            "value": "PYTHON|3.14"
+            "value": "PYTHON|3.12"
         },
         "startupCommand": {
             "value": ""

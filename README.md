@@ -99,7 +99,7 @@ az deployment group create \
 
 ### Resources created
 - Linux App Service Plan (B1)
-- Linux Python Web App (Python 3.14)
+- Linux Python Web App (Python 3.12)
 - System-assigned managed identity
 - Startup command: empty by default during ARM provisioning (set later by deployment workflow or manual config)
 - Tags including `repo=CI-CD-Pipeline-Testing`
