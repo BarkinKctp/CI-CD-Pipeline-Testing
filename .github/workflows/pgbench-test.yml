@@ -1,4 +1,4 @@
-name: Build and deploy Python app to Azure Web App - pgbench prefix
+name: pgbench prefix test
 
 on:
     workflow_dispatch:
