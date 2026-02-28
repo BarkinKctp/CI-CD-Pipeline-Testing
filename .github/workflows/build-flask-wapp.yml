@@ -99,7 +99,6 @@ jobs:
           INPUT_TAG_VALUE="${{ github.event.inputs.tag_value || '' }}"
           INPUT_RESOURCE_GROUP="${{ github.event.inputs.resource_group || '' }}"
           REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
-          REPO_RESOURCE_GROUP="${{ vars.WEBAPP_RESOURCE_GROUP || '' }}"
           DEFAULT_REPO_NAME="${GITHUB_REPOSITORY#*/}"
 
           if [ -n "$INPUT_TAG_VALUE" ]; then
@@ -132,9 +131,6 @@ jobs:
           if [ -n "$INPUT_RESOURCE_GROUP" ]; then
             RESOLVED_RESOURCE_GROUP="$INPUT_RESOURCE_GROUP"
             echo "Using workflow_dispatch input resource_group: $RESOLVED_RESOURCE_GROUP"
-          elif [ -n "$REPO_RESOURCE_GROUP" ]; then
-            RESOLVED_RESOURCE_GROUP="$REPO_RESOURCE_GROUP"
-            echo "Using repository variable WEBAPP_RESOURCE_GROUP: $RESOLVED_RESOURCE_GROUP"
           else
             RESOLVED_RESOURCE_GROUP=$(az webapp list --query "[?name=='$RESOLVED_APP_NAME'].resourceGroup | [0]" -o tsv)
             if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
