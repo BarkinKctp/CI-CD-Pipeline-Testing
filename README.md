@@ -68,7 +68,7 @@ $env:WEBAPP_NAME="your-webapp-name"
 $env:LOCATION="canadacentral"
 $env:GITHUB_ORGANIZATION_NAME="your-github-user-or-org"
 $env:RESOURCE_GROUP="your-rg-name"
-./azure/deploy-wepapp-powershell.ps1
+./azure/deploy-webapp-powershell.ps1
 ```
 
 ```bash
@@ -91,8 +91,8 @@ az deployment group create \
 ### Prompt cache behavior
 - Script reuses values in the current shell session by default.
 
-- Force prompt without persisting new values: `./azure/deploy-wepapp-powershell.ps1 -NoCache`
-- Clear cached prompt values first: `./azure/deploy-wepapp-powershell.ps1 -ClearCache`
+- Force prompt without persisting new values: `./azure/deploy-webapp-powershell.ps1 -NoCache`
+- Clear cached prompt values first: `./azure/deploy-webapp-powershell.ps1 -ClearCache`
 
 - Force prompt and ignore shell-cached values: `bash azure/deploy-webapp-bash.sh --no-cache`
 - Clear cached prompt values first: `bash azure/deploy-webapp-bash.sh --clear-cache`
@@ -102,7 +102,7 @@ az deployment group create \
 - Linux Python Web App (Python 3.12)
 - System-assigned managed identity
 - Startup command: empty by default during ARM provisioning (set later by deployment workflow or manual config)
-- Tags including `repo=CI-CD-Pipeline-Testing`
+- Tags including `repo=<repository-name>`
 
 **Warnings:**
 - `WEBAPP_NAME` must be **globally unique** in Azure App Service.
@@ -128,7 +128,7 @@ If Web App already exists:
 **Web App name resolution order in workflow:**
 1. `workflow_dispatch` input: `webapp_name`
 2. Repository variable: `WEBAPP_NAME`
-3. Tag lookup: `repo=CI-CD-Pipeline-Testing`
+3. Tag lookup: `repo=<repository-name>`
 
 **Trigger deployment:**
 - Automatic: push/PR to `main`
@@ -138,7 +138,7 @@ If Web App already exists:
 - No web app name resolved:
 	- Provide `webapp_name` in manual run, or
 	- Set repo variable `WEBAPP_NAME`, or
-	- Add tag `repo=CI-CD-Pipeline-Testing`
+	- Add tag `repo=<repository-name>`
 
 - Azure login/OIDC failures:
 	- Verify client/tenant/subscription IDs

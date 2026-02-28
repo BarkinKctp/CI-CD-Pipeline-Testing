@@ -128,4 +128,10 @@ echo "Location: ${LOCATION:-<template-default>}"
 echo "Resource Group: $RESOURCE_GROUP"
 echo "App Service Plan: $APP_SERVICE_PLAN_NAME"
 echo "Managed Identity: $MANAGED_IDENTITY_NAME"
+client_id="$(az identity show --name "$MANAGED_IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --query clientId -o tsv 2>/dev/null || true)"
+if [[ -n "$client_id" ]]; then
+  echo "Client ID of Managed Identity (for reference): $client_id"
+else
+  echo "Warning: Unable to resolve managed identity client ID right now. You can run: az identity show --name $MANAGED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --query clientId -o tsv"
+fi
 echo "GitHub Organization: ${GITHUB_ORGANIZATION_NAME:-<template-default>}"

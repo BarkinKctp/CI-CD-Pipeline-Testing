@@ -171,22 +171,30 @@ jobs:
               id: deploy_to_webapp_attempt_1
               uses: azure/webapps-deploy@v3
               continue-on-error: true
-              timeout-minutes: 10
+              timeout-minutes: 12
               with:
                   app-name: ${{ steps.resolveapp.outputs.app_name }}
                   slot-name: Production
                   package: deploy.zip
 
-            - name: Wait before retry
+            - name: Restart app + wait before retry
               if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
-              run: sleep 20
+              run: |
+                  APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
+                  RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
+
+                  echo "Attempt 1 failed. Restarting $APP_NAME before retry..."
+                  az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" || true
+
+                  echo "Waiting 20s before retry..."
+                  sleep 20
 
             - name: Deploy to Azure Web App (attempt 2)
               id: deploy_to_webapp_attempt_2
               if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
               uses: azure/webapps-deploy@v3
               continue-on-error: true
-              timeout-minutes: 10
+              timeout-minutes: 12
               with:
                   app-name: ${{ steps.resolveapp.outputs.app_name }}
                   slot-name: Production

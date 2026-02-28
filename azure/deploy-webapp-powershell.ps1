@@ -48,6 +48,7 @@ if ($ClearCache) {
     [Environment]::SetEnvironmentVariable('RESOURCE_GROUP', $null, 'Process')
 }
 
+
 $webAppNameDefault = Get-DefaultParamValue 'webAppName'
 $locationDefault = Get-DefaultParamValue 'location'
 $ghOrgDefault = Get-DefaultParamValue 'githubOrganizationName'
@@ -59,6 +60,7 @@ $webAppName = Resolve-Value 'WEBAPP_NAME' 'Enter WEBAPP_NAME' $webAppNameDefault
 $location = Resolve-Value 'LOCATION' 'Enter LOCATION (e.g. canadacentral)' $locationDefault
 $githubOrganizationName = Resolve-Value 'GITHUB_ORGANIZATION_NAME' 'Enter GITHUB_ORGANIZATION_NAME (e.g. your GitHub user/org)' $ghOrgDefault
 $resourceGroup = Resolve-Value 'RESOURCE_GROUP' 'Enter RESOURCE_GROUP_NAME (default: <WEBAPP_NAME>-rg)' "$webAppName-rg"
+
 
 $appServicePlanName = [Environment]::GetEnvironmentVariable('APP_SERVICE_PLAN_NAME')
 if ([string]::IsNullOrWhiteSpace($appServicePlanName)) { $appServicePlanName = "$webAppName-plan" }
@@ -109,4 +111,10 @@ Write-Host "Location: $(if ([string]::IsNullOrWhiteSpace($location)) { '<templat
 Write-Host "Resource Group: $resourceGroup"
 Write-Host "App Service Plan: $appServicePlanName"
 Write-Host "Managed Identity: $managedIdentityName"
+$clientId = az identity show --name $managedIdentityName --resource-group $resourceGroup --query clientId -o tsv 2>$null
+if ([string]::IsNullOrWhiteSpace($clientId)) {
+    Write-Warning "Unable to resolve managed identity client ID right now. You can run: az identity show --name $managedIdentityName --resource-group $resourceGroup --query clientId -o tsv"
+} else {
+    Write-Host "Client ID of Managed Identity (for reference): $clientId"
+}
 Write-Host "GitHub Organization: $(if ([string]::IsNullOrWhiteSpace($githubOrganizationName)) { '<template-default>' } else { $githubOrganizationName })"

@@ -12,7 +12,16 @@ on:
         required: false
         type: string
       resource_group:
-        description: "Azure Resource Group for the target web app. If entered, this exact value is used. If not entered, workflow defaults to <webapp_name>-rg. NOTE: Required when your ARM deployment used a different RG name."
+        description: "Azure Resource Group Name for the target web app. Required when your ARM deployment used a different RG name."
+        required: false
+        type: string
+      tag_key:
+        description: "Tag key for lookup. Required if webapp_name is not provided. (default: 'repo')"
+        required: false
+        default: "repo"
+        type: string
+      tag_value:
+        description: "Tag value for lookup. Required if webapp_name is not provided. (default: current repository name)"
         required: false
         type: string
   pull_request:
@@ -105,9 +114,16 @@ jobs:
         id: resolveapp
         run: |
           INPUT_APP_NAME="${{ github.event.inputs.webapp_name || '' }}"
+          INPUT_TAG_KEY="${{ github.event.inputs.tag_key || '' }}"
+          INPUT_TAG_VALUE="${{ github.event.inputs.tag_value || '' }}"
           REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
-          TAG_KEY="repo"
-          TAG_VALUE="${GITHUB_REPOSITORY#*/}"
+          DEFAULT_TAG_VALUE="${GITHUB_REPOSITORY#*/}"
+
+          if [ -n "$INPUT_TAG_VALUE" ]; then
+            EFFECTIVE_TAG_VALUE="$INPUT_TAG_VALUE"
+          else
+            EFFECTIVE_TAG_VALUE="$DEFAULT_TAG_VALUE"
+          fi
 
           if [ -n "$INPUT_APP_NAME" ]; then
             RESOLVED_APP_NAME="$INPUT_APP_NAME"
@@ -116,15 +132,15 @@ jobs:
             RESOLVED_APP_NAME="$REPO_APP_NAME"
             echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
           else
-            QUERY="[?tags.${TAG_KEY}=='${TAG_VALUE}'].name | [0]"
+            QUERY="[?tags.${INPUT_TAG_KEY}=='${EFFECTIVE_TAG_VALUE}'].name | [0]"
             RESOLVED_APP_NAME=$(az webapp list --query "$QUERY" -o tsv)
             if [ -n "$RESOLVED_APP_NAME" ]; then
-              echo "Using web app found by tag $TAG_KEY=$TAG_VALUE: $RESOLVED_APP_NAME"
+              echo "Using web app found by tag $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE: $RESOLVED_APP_NAME"
             fi
           fi
 
           if [ -z "$RESOLVED_APP_NAME" ]; then
-            echo "No web app name resolved. Provide workflow_dispatch input webapp_name, set repository variable WEBAPP_NAME, or tag a web app with $TAG_KEY=$TAG_VALUE." >&2
+            echo "No web app name resolved. Provide workflow_dispatch input webapp_name, set repository variable WEBAPP_NAME, or tag a web app with $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE." >&2
             exit 1
           fi
 
@@ -192,22 +208,28 @@ jobs:
         id: deploy_to_webapp_attempt_1
         uses: azure/webapps-deploy@v3
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           app-name: ${{ steps.resolveapp.outputs.app_name }}
           slot-name: Production
           package: deploy.zip
 
-      - name: Wait before retry
+      - name: Restart app + wait before retry
         if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
-        run: sleep 20
+        run: |
+          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
+          RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
+
+          echo "Attempt 1 failed. Restarting $APP_NAME before retry..."
+          az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" || true
+          sleep 20
 
       - name: Deploy to Azure Web App (attempt 2)
         id: deploy_to_webapp_attempt_2
         if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
         uses: azure/webapps-deploy@v3
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           app-name: ${{ steps.resolveapp.outputs.app_name }}
           slot-name: Production
@@ -218,7 +240,6 @@ jobs:
         run: |
           APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
           RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
-
           az webapp config set \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
