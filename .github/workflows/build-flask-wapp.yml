@@ -188,7 +188,7 @@ jobs:
           if az webapp config set \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
-            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"; then
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"; then
             echo "Startup command configured for $APP_NAME"
           else
             echo "Warning: Unable to update startup command for $APP_NAME (likely missing Microsoft.Web/sites/config permissions). Continuing deploy."

@@ -4,11 +4,11 @@ Simple test repository for practicing and validating CI/CD workflows.
 
 ## Table of Contents
 - [Local quick run](#local-quick-run)
-- [Azure getting started (quick)](#azure-getting-started-quick)
+- [Azure getting started](#azure-getting-started)
+- [GitHub secrets (required)](#github-secrets-required)
 - [ARM template deployment (automated)](#arm-template-deployment-automated)
 - [GitHub Actions deployment flow](#github-actions-deployment-flow)
 - [VS Code manual deploy](#vs-code-manual-deploy)
-- [GitHub secrets (required)](#github-secrets-required)
 - [Troubleshooting](#troubleshooting)
 - [Notes](#notes)
 
@@ -18,7 +18,7 @@ Simple test repository for practicing and validating CI/CD workflows.
 - Activate venv: `\.venv\Scripts\Activate.ps1`
 - Install deps: `pip install -r requirements.txt`
 
-## Azure getting started (quick)
+## Azure getting started
 Prerequisites:
 - Install Azure CLI (`az`) locally.
 
@@ -33,11 +33,37 @@ az account list --output table
 # Set the subscription you want to deploy to
 az account set --subscription <your-subscription-id>
 ```
+## GitHub secrets (required)
+Create GitHub secrets:
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+>Important
+- `AZURE_CLIENT_ID` should be the **client ID of the created user-assigned managed identity** used by GitHub OIDC (from ARM output `userAssignedManagedIdentityClientId` or Azure Portal).
+- `AZURE_TENANT_ID` must match that identity tenant.
+- `AZURE_SUBSCRIPTION_ID` must be the target subscription.
 
 ## ARM template deployment (automated)
 
-PowerShell (Windows):
+### General info
+- The scripts prompt for `WEBAPP_NAME`, `LOCATION`, `GITHUB_ORGANIZATION_NAME`, and `RESOURCE_GROUP`.
+- If you dont specify prompts, defaults are used from `arm/webapp-managed-identity.parameters.json` (and `RESOURCE_GROUP` defaults from your script flow).
+- Deployment creates/uses a Resource Group and provisions App Service + identity resources from `arm/webapp-managed-identity.template.json`.
+- Keep the active Azure subscription correct before running (`az account set --subscription <your-subscription-id>`).
+- You can change default parameter values used by the scripts (for example `webAppName`, `location`, `githubOrganizationName`, SKU values, and tags) in `arm/webapp-managed-identity.parameters.json`.
+
+### Setup steps
+Follow these steps on your local machine:
+
+```bash
+# Login to Azure and set subscription
+az login
+az account set --subscription <your-subscription-id>
+```
+
 ```powershell
+# PowerShell (Windows)
 $env:WEBAPP_NAME="your-webapp-name"
 $env:LOCATION="canadacentral"
 $env:GITHUB_ORGANIZATION_NAME="your-github-user-or-org"
@@ -45,8 +71,8 @@ $env:RESOURCE_GROUP="your-rg-name"
 ./arm/deploy-webapp-from-env.ps1
 ```
 
-Bash:
 ```bash
+# Bash
 export WEBAPP_NAME=your-webapp-name
 export LOCATION=canadacentral
 export GITHUB_ORGANIZATION_NAME=your-github-user-or-org
@@ -54,8 +80,13 @@ export RESOURCE_GROUP=your-rg-name
 bash arm/deploy-webapp-from-env.sh
 ```
 
->Use ARM templates to recreate the baseline Azure setup.
-
+```bash
+# Optional: deploy directly with parameters file
+az deployment group create \
+	--resource-group <your-rg> \
+	--template-file arm/webapp-managed-identity.template.json \
+	--parameters @arm/webapp-managed-identity.parameters.json
+```
 
 PowerShell/Bash prompt cache behavior:
 - Script reuses values in the current shell session by default.
@@ -72,16 +103,6 @@ PowerShell/Bash prompt cache behavior:
 - **Not all Azure Locations may support all resource types or SKUs used in the template.**(**Canada Central** is **recommended** for testing).
 - Federated credential creation **can fail if organization/repository/branch values do not match your GitHub Actions OIDC subject.**
 - Run `az account set --subscription <your-subscription-id>` before deployment; if the active subscription is wrong, managed identity role assignment can **fail or target the wrong scope.**
-
----
-
-**Deploy directly with parameters JSON (no prompt):**
-```bash
-az deployment group create \
-	--resource-group <your-rg> \
-	--template-file arm/webapp-managed-identity.template.json \
-	--parameters @arm/webapp-managed-identity.parameters.json
-```
 
 Creates:
 - Linux App Service Plan (B1)
@@ -114,17 +135,6 @@ If Web App already exists:
 - Automatic: push/PR to `main`
 - Manual: run workflow from Actions and optionally pass `webapp_name` and `resource_group`
 
-## GitHub secrets (required)
-Create GitHub secrets:
-- `AZURE_CLIENT_ID`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
-
->Important
-- `AZURE_CLIENT_ID` should be the **client ID of the created user-assigned managed identity** used by GitHub OIDC (from ARM output `userAssignedManagedIdentityClientId` or Azure Portal).
-- `AZURE_TENANT_ID` must match that identity tenant.
-- `AZURE_SUBSCRIPTION_ID` must be the target subscription.
-
 ## Troubleshooting
 - No web app name resolved:
 	- Add tag `repo=CI-CD-Pipeline-Testing`, or
@@ -144,7 +154,7 @@ Create GitHub secrets:
 - Right-click -> **Deploy to Web App...**
 - Choose this repository folder
 - Set startup command in Web App config if needed:
-	- `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
+	- `gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app`
 
 ## Notes
 - Prefer running deployments manually (`workflow_dispatch`) when validating new Azure settings.
