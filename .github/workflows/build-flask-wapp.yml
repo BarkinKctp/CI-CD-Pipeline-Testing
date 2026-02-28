@@ -12,16 +12,18 @@ on:
         required: false
         type: string
       resource_group:
-        description: "Azure Resource Group Name for the target web app. Required when your ARM deployment used a different RG name."
+        description: "Azure RG Name for the target web app.
+          Required when your ARM deployment used a different RG name."
         required: false
         type: string
       tag_key:
-        description: "Tag key for lookup. Required if webapp_name is not provided. (default: 'repo')"
+        description: "Tag key for lookup.
+          Required if webapp_name is not provided."
         required: false
         default: "repo"
         type: string
       tag_value:
-        description: "Tag value for lookup. Required if webapp_name is not provided. (default: current repository name)"
+        description: "Tag value for lookup."
         required: false
         type: string
   pull_request:
@@ -118,6 +120,10 @@ jobs:
           INPUT_TAG_VALUE="${{ github.event.inputs.tag_value || '' }}"
           REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
           DEFAULT_TAG_VALUE="${GITHUB_REPOSITORY#*/}"
+
+          if [ -z "$INPUT_TAG_KEY" ]; then
+            INPUT_TAG_KEY="repo"
+          fi
 
           if [ -n "$INPUT_TAG_VALUE" ]; then
             EFFECTIVE_TAG_VALUE="$INPUT_TAG_VALUE"

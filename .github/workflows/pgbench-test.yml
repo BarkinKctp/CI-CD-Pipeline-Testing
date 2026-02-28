@@ -80,18 +80,14 @@ jobs:
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-            - name: Resolve web app name (dispatch > repo var > tag)
+            - name: Resolve web app name
               id: resolveapp
               run: |
-                  INPUT_APP_NAME="${{ github.event.inputs.webapp_name || '' }}"
                   REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
                   TAG_KEY="repo"
                   TAG_VALUE="${GITHUB_REPOSITORY#*/}"
 
-                  if [ -n "$INPUT_APP_NAME" ]; then
-                    RESOLVED_APP_NAME="$INPUT_APP_NAME"
-                    echo "Using workflow_dispatch input webapp_name: $RESOLVED_APP_NAME"
-                  elif [ -n "$REPO_APP_NAME" ]; then
+                  if [ -n "$REPO_APP_NAME" ]; then
                     RESOLVED_APP_NAME="$REPO_APP_NAME"
                     echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
                   else

@@ -111,41 +111,65 @@ az deployment group create \
 - Run `az account set --subscription <your-subscription-id>` before deployment; if the active subscription is wrong, managed identity role assignment can **fail or target the wrong scope.**
 
 ## GitHub Actions deployment flow without ARM
-> This workflow deploys to an existing Azure Web App; it does not create one.
+> This workflow deploys to an existing Azure Web App. It does not create one.
 
-Create Web App first:
-- Option A (recommended): Azure Portal -> Web App -> enable automatic CI/CD during creation.
-- Option B: VS Code Azure App Service extension -> Create New Web App.
+### Workflows in this repo
+- Main deploy: `.github/workflows/build-flask-wapp.yml` (push/PR to `main` + manual dispatch)
+- Test-only pipeline: `.github/workflows/test-flask.yml` (no Azure deploy)
 
-If Web App already exists:
-- Configure Deployment Center.
-- Use Managed Identity or OIDC service principal for GitHub login. 
-- Create a federated identity credential for Github Actions
-- Ensure RBAC access on target subscription/resource group.
+### Build artifact and package layout
+Main deploy workflow:
+1. Upload artifact with:
+   - `app/`
+   - `requirements.txt`
+2. Download artifact to `deploy_pkg/`
+3. Validate:
+   - `deploy_pkg/app` exists
+   - `deploy_pkg/requirements.txt` exists
+4. Zip `deploy_pkg/` to `deploy.zip`
+5. Deploy `deploy.zip` using `azure/webapps-deploy@v3`
 
----
+If validation fails, deployment stops early with a clear artifact error.
 
-**Web App name resolution order in workflow:**
-1. `workflow_dispatch` input: `webapp_name`
-2. Repository variable: `WEBAPP_NAME`
-3. Tag lookup: `repo=<repository-name>`
+### Manual workflow_dispatch inputs
 
-**Trigger deployment:**
-- Automatic: push/PR to `main`
-- Manual: run workflow from Actions (optionally pass `webapp_name` and `resource_group`)
+#### build-flask-wapp.yml
+- `webapp_name` (optional): explicit target web app.
+- `resource_group` (optional): if not provided, defaults to `<webapp_name>-rg`.
+  - **Required** when ARM used a different RG naming convention.
+- `tag_key` (optional, default `repo`): tag key used for app lookup when `webapp_name` is not provided.
+- `tag_value` (optional): tag value override for app lookup.
+
+Web app resolution order:
+1. `webapp_name` input
+2. Repository variable `WEBAPP_NAME`
+3. Tag lookup using `tag_key` + `tag_value` (or repo-name default)
+
+### Deployment retry behavior
+Main deploy workflow uses:
+- Deploy attempt 1
+- If failed: restart App Service + wait 20s
+- Deploy attempt 2
+- If either succeeds: set startup command and restart app
+- If both fail: workflow fails
+
+Startup command set by workflow:
+`gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ## Troubleshooting
-- No web app name resolved:
-	- Provide `webapp_name` in manual run, or
-	- Set repo variable `WEBAPP_NAME`, or
-	- Add tag `repo=<repository-name>`
+- **Deploy package missing files**
+  - Check artifact upload step includes both `app/` and `requirements.txt`.
+  - Confirm download path is `deploy_pkg`.
 
-- Azure login/OIDC failures:
-	- Verify client/tenant/subscription IDs
-	- Verify federated credential subject matches repo/branch/event
-	- Verify RBAC assignment exists for identity
-	- If you see `AuthorizationFailed` on `Microsoft.Web/sites/read`, grant at least `Reader` on the target Web App or Resource Group to the deployment identity
-	- If you see `No matching federated identity record found`, your federated credential subject does not match the branch/ref used by the workflow run (for example `main` vs `pgbench/*`)
+- **Web app not found**
+  - Provide `webapp_name` manually, or set repo variable `WEBAPP_NAME`, or ensure expected tag exists.
+  - If ARM used non-default RG naming, pass `resource_group` explicitly.
+
+- **AuthorizationFailed**
+  - Grant deployment identity at least `Reader` on target Web App or Resource Group.
+
+- **OIDC mismatch**
+  - Ensure federated credential subject matches repo/branch/ref used by workflow run.
 
 ## VS Code manual deploy
 - Install Azure App Service extension
