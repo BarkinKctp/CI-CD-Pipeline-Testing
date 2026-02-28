@@ -45,6 +45,7 @@ if ($ClearCache) {
     [Environment]::SetEnvironmentVariable('WEBAPP_NAME', $null, 'Process')
     [Environment]::SetEnvironmentVariable('LOCATION', $null, 'Process')
     [Environment]::SetEnvironmentVariable('GITHUB_ORGANIZATION_NAME', $null, 'Process')
+    [Environment]::SetEnvironmentVariable('RESOURCE_GROUP', $null, 'Process')
 }
 
 $webAppNameDefault = Get-DefaultParamValue 'webAppName'
@@ -57,9 +58,7 @@ $fcNameDefault = Get-DefaultParamValue 'federatedCredentialName'
 $webAppName = Resolve-Value 'WEBAPP_NAME' 'Enter WEBAPP_NAME' $webAppNameDefault
 $location = Resolve-Value 'LOCATION' 'Enter LOCATION (e.g. canadacentral)' $locationDefault
 $githubOrganizationName = Resolve-Value 'GITHUB_ORGANIZATION_NAME' 'Enter GITHUB_ORGANIZATION_NAME (e.g. your GitHub user/org)' $ghOrgDefault
-
-$resourceGroup = [Environment]::GetEnvironmentVariable('RESOURCE_GROUP')
-if ([string]::IsNullOrWhiteSpace($resourceGroup)) { $resourceGroup = "rg-$webAppName" }
+$resourceGroup = Resolve-Value 'RESOURCE_GROUP' 'Enter RESOURCE_GROUP_NAME (default: <WEBAPP_NAME>-rg)' "$webAppName-rg"
 
 $appServicePlanName = [Environment]::GetEnvironmentVariable('APP_SERVICE_PLAN_NAME')
 if ([string]::IsNullOrWhiteSpace($appServicePlanName)) { $appServicePlanName = "$webAppName-plan" }

@@ -25,7 +25,7 @@ on:
         required: false
         type: string
       resource_group:
-        description: "Azure Resource Group for the target web app (optional)"
+        description: "Azure Resource Group for the target web app (Note: if not deployed via ARM, the RG name may not follow the naming convention, so provide this input to ensure correct resolution)"
         required: false
         type: string
   pull_request:
@@ -137,25 +137,25 @@ jobs:
           ACTIVE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
           echo "Azure subscription in workflow context: $ACTIVE_SUBSCRIPTION_ID"
+          echo "Input resource group: $INPUT_RESOURCE_GROUP"
 
-          if [ -n "$INPUT_RESOURCE_GROUP" ]; then
-            if ! az webapp show --name "$APP_NAME" --resource-group "$INPUT_RESOURCE_GROUP" --output none; then
-              echo "::error::Web app '$APP_NAME' was not found in resource group '$INPUT_RESOURCE_GROUP' under subscription '$ACTIVE_SUBSCRIPTION_ID'."
-              echo "::error::Check AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, AZURE_CLIENT_ID, and the resource_group input."
-              exit 1
-            fi
-            RESOLVED_RESOURCE_GROUP="$INPUT_RESOURCE_GROUP"
+          if [ -z "$INPUT_RESOURCE_GROUP" ]; then
+            REQUIRED_RESOURCE_GROUP="${APP_NAME}-rg"
+            echo "No resource_group input provided. Defaulting to: $REQUIRED_RESOURCE_GROUP"
           else
-            RESOLVED_RESOURCE_GROUP=$(az webapp list --query "[?name=='$APP_NAME'].resourceGroup | [0]" -o tsv)
-            if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
-              echo "::error::Web app '$APP_NAME' is not visible in subscription '$ACTIVE_SUBSCRIPTION_ID'."
-              echo "::error::Most common cause: GitHub OIDC secrets point to a different subscription/tenant than the app."
-              exit 1
-            fi
+            REQUIRED_RESOURCE_GROUP="$INPUT_RESOURCE_GROUP"
+            echo "Using provided resource_group: $REQUIRED_RESOURCE_GROUP"
           fi
 
-          echo "Resolved resource group: $RESOLVED_RESOURCE_GROUP"
-          echo "resource_group=$RESOLVED_RESOURCE_GROUP" >> $GITHUB_OUTPUT
+          if ! az webapp show --name "$APP_NAME" --resource-group "$REQUIRED_RESOURCE_GROUP" --output none; then
+            echo "::error::Web app '$APP_NAME' was not found in resource group '$REQUIRED_RESOURCE_GROUP' under subscription '$ACTIVE_SUBSCRIPTION_ID'."
+            echo "::error::If your ARM deployment used a different RG name, provide workflow_dispatch input resource_group explicitly."
+            echo "::error::Also verify AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, and AZURE_CLIENT_ID."
+            exit 1
+          fi
+
+          echo "Resolved resource group: $REQUIRED_RESOURCE_GROUP"
+          echo "resource_group=$REQUIRED_RESOURCE_GROUP" >> $GITHUB_OUTPUT
 
       - name: Configure startup command (Gunicorn)
         run: |

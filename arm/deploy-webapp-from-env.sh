@@ -68,7 +68,7 @@ prompt_if_empty() {
 }
 
 if [[ "$CLEAR_CACHE" == "true" ]]; then
-  unset WEBAPP_NAME LOCATION GITHUB_ORGANIZATION_NAME
+  unset WEBAPP_NAME LOCATION GITHUB_ORGANIZATION_NAME RESOURCE_GROUP
 fi
 
 DEFAULT_WEBAPP_NAME="$(get_param_default webAppName)"
@@ -78,12 +78,11 @@ DEFAULT_GITHUB_REPOSITORY="$(get_param_default githubRepository)"
 DEFAULT_GITHUB_BRANCH="$(get_param_default githubBranch)"
 DEFAULT_FEDERATED_CREDENTIAL_NAME="$(get_param_default federatedCredentialName)"
 
+prompt_if_empty RESOURCE_GROUP "Enter RESOURCE_GROUP (default: <WEBAPP_NAME>-rg)" "${WEBAPP_NAME}-rg"
 prompt_if_empty WEBAPP_NAME "Enter WEBAPP_NAME" "$DEFAULT_WEBAPP_NAME"
 prompt_if_empty LOCATION "Enter LOCATION (e.g. canadacentral)" "$DEFAULT_LOCATION"
 prompt_if_empty GITHUB_ORGANIZATION_NAME "Enter GITHUB_ORGANIZATION_NAME (e.g. your GitHub user/org)" "$DEFAULT_GITHUB_ORGANIZATION_NAME"
 
-
-RESOURCE_GROUP="${RESOURCE_GROUP:-rg-${WEBAPP_NAME}}"
 APP_SERVICE_PLAN_NAME="${APP_SERVICE_PLAN_NAME:-${WEBAPP_NAME}-plan}"
 MANAGED_IDENTITY_NAME="${MANAGED_IDENTITY_NAME:-${WEBAPP_NAME}-oidc-mi}"
 GITHUB_REPOSITORY="${DEFAULT_GITHUB_REPOSITORY:-CI-CD-Pipeline-Testing}"
