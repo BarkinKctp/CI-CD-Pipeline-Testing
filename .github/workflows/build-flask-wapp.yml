@@ -111,7 +111,7 @@ jobs:
             RESOLVED_APP_NAME="$REPO_APP_NAME"
             echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
           else
-            QUERY="[?tags['$INPUT_TAG_KEY']=='$EFFECTIVE_TAG_VALUE'].name | [0]"
+            QUERY="[?tags.${INPUT_TAG_KEY}=='$EFFECTIVE_TAG_VALUE'].name | [0]"
             RESOLVED_APP_NAME=$(az webapp list --query "$QUERY" -o tsv)
             if [ -n "$RESOLVED_APP_NAME" ]; then
               echo "Using web app found by tag $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE: $RESOLVED_APP_NAME"
