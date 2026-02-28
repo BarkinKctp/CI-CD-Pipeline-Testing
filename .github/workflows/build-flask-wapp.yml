@@ -172,10 +172,21 @@ jobs:
           APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
           RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
 
+          if az webapp config appsettings set \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true ENABLE_ORYX_BUILD=true WEBSITE_RUN_FROM_PACKAGE=0 >/dev/null; then
+            echo "Build app settings configured for Oryx"
+          else
+            echo "::error::Unable to set required build app settings (SCM_DO_BUILD_DURING_DEPLOYMENT, ENABLE_ORYX_BUILD, WEBSITE_RUN_FROM_PACKAGE)."
+            echo "::error::Grant Microsoft.Web/sites/config/write permission to deployment identity and rerun."
+            exit 1
+          fi
+
           if az webapp config set \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
-            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"; then
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"; then
             echo "Startup command configured for $APP_NAME"
           else
             echo "Warning: Unable to update startup command for $APP_NAME (likely missing Microsoft.Web/sites/config permissions). Continuing deploy."

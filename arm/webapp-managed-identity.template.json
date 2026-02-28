@@ -300,8 +300,12 @@
                             "value": "true"
                         },
                         {
+                            "name": "ENABLE_ORYX_BUILD",
+                            "value": "true"
+                        },
+                        {
                             "name": "WEBSITE_RUN_FROM_PACKAGE",
-                            "value": "1"
+                            "value": "0"
                         }
                     ]
                 }

@@ -143,7 +143,7 @@ Create GitHub secrets:
 - Right-click -> **Deploy to Web App...**
 - Choose this repository folder
 - Set startup command in Web App config if needed:
-	- `gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app`
+	- `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ## Notes
 - Prefer running deployments manually (`workflow_dispatch`) when validating new Azure settings.
