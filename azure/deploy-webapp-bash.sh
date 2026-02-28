@@ -22,7 +22,7 @@ for arg in "$@"; do
       ;;
     *)
       echo "Unknown option: $arg" >&2
-      echo "Usage: bash arm/deploy-webapp-from-env.sh [--no-cache] [--clear-cache]" >&2
+      echo "Usage: bash azure/deploy-webapp-bash.sh [--no-cache] [--clear-cache]" >&2
       exit 1
       ;;
   esac

@@ -1,4 +1,4 @@
-name: flask App Test
+name: Test Flask App
 
 on:
     workflow_dispatch:

@@ -48,10 +48,10 @@ Create GitHub secrets:
 
 ### General info
 - The scripts prompt for `WEBAPP_NAME`, `LOCATION`, `GITHUB_ORGANIZATION_NAME`, and `RESOURCE_GROUP`.
-- If you don’t specify prompt values, defaults are used from `arm/azuredeploy.parameters.json` (and `RESOURCE_GROUP` defaults from your script flow).
-- Deployment creates/uses a Resource Group and provisions App Service + identity resources from `arm/azuredeploy.json`.
+- If you don’t specify prompt values, defaults are used from `azure/azuredeploy.parameters.json` (and `RESOURCE_GROUP` defaults from your script flow).
+- Deployment creates/uses a Resource Group and provisions App Service + identity resources from `azure/azuredeploy.json`.
 - Keep the active Azure subscription correct before running (`az account set --subscription <your-subscription-id>`).
-- You can change default parameter values used by the scripts (for example `webAppName`, `location`, `githubOrganizationName`, SKU values, and tags) in `arm/azuredeploy.parameters.json`.
+- You can change default parameter values used by the scripts (for example `webAppName`, `location`, `githubOrganizationName`, SKU values, and tags) in `azure/azuredeploy.parameters.json`.
 
 ### Setup steps
 Follow these steps on your local machine:
@@ -68,7 +68,7 @@ $env:WEBAPP_NAME="your-webapp-name"
 $env:LOCATION="canadacentral"
 $env:GITHUB_ORGANIZATION_NAME="your-github-user-or-org"
 $env:RESOURCE_GROUP="your-rg-name"
-./arm/deploy-webapp-from-env.ps1
+./azure/deploy-wepapp-powershell.ps1
 ```
 
 ```bash
@@ -77,25 +77,25 @@ export WEBAPP_NAME=your-webapp-name
 export LOCATION=canadacentral
 export GITHUB_ORGANIZATION_NAME=your-github-user-or-org
 export RESOURCE_GROUP=your-rg-name
-bash arm/deploy-webapp-from-env.sh
+bash azure/deploy-webapp-bash.sh
 ```
 
 ```bash
 # Optional: deploy directly with parameters file
 az deployment group create \
 	--resource-group <your-rg> \
-	--template-file arm/azuredeploy.json \
-	--parameters @arm/azuredeploy.parameters.json
+	--template-file azure/azuredeploy.json \
+	--parameters @azure/azuredeploy.parameters.json
 ```
 
 ### Prompt cache behavior
 - Script reuses values in the current shell session by default.
 
-- Force prompt without persisting new values: `./arm/deploy-webapp-from-env.ps1 -NoCache`
-- Clear cached prompt values first: `./arm/deploy-webapp-from-env.ps1 -ClearCache`
+- Force prompt without persisting new values: `./azure/deploy-wepapp-powershell.ps1 -NoCache`
+- Clear cached prompt values first: `./azure/deploy-wepapp-powershell.ps1 -ClearCache`
 
-- Force prompt and ignore shell-cached values: `bash arm/deploy-webapp-from-env.sh --no-cache`
-- Clear cached prompt values first: `bash arm/deploy-webapp-from-env.sh --clear-cache`
+- Force prompt and ignore shell-cached values: `bash azure/deploy-webapp-bash.sh --no-cache`
+- Clear cached prompt values first: `bash azure/deploy-webapp-bash.sh --clear-cache`
 
 ### Resources created
 - Linux App Service Plan (B1)

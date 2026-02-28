@@ -2,7 +2,7 @@
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Python app to Azure Web App - brk-flask-app-wapp
+name: Build and Deploy Flask Web App to Azure
 
 on:
   workflow_dispatch:
@@ -13,19 +13,6 @@ on:
         type: string
       resource_group:
         description: "Azure Resource Group for the target web app. If entered, this exact value is used. If not entered, workflow defaults to <webapp_name>-rg. NOTE: Required when your ARM deployment used a different RG name."
-        required: false
-        type: string
-      repo_name:
-        description: "Repository name to match in tag value (optional)"
-        required: false
-        type: string
-      tag_key:
-        description: "Tag key used for lookup when webapp_name is not provided"
-        required: false
-        default: "repo"
-        type: string
-      tag_value:
-        description: "Explicit tag value override for lookup (optional)"
         required: false
         type: string
   pull_request:
@@ -78,6 +65,20 @@ jobs:
       contents: read #This is required for actions/checkout
 
     steps:
+      - name: Create GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.GH_APPLICATION_ID }}
+          private-key: ${{ secrets.GH_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app.outputs.token }}
+          clean: false
+
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
@@ -92,20 +93,6 @@ jobs:
           ls -la deploy_pkg/app || echo "NO app/ folder"
           echo "---- find main.py ----"
           find deploy_pkg -maxdepth 3 -name "main.py" -print
-
-      - name: Create GitHub App token
-        id: app
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ vars.GH_APPLICATION_ID }}
-          private-key: ${{ secrets.GH_APP_KEY }}
-          owner: ${{ github.repository_owner }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ steps.app.outputs.token }}
-          clean: false
 
       - name: Azure login
         uses: azure/login@v2
