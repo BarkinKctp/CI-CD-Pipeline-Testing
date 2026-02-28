@@ -105,6 +105,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
+          clean: false
 
       - name: Azure login
         uses: azure/login@v2
@@ -209,10 +210,20 @@ jobs:
             echo "Warning: Unable to restart web app after startup command update. Continuing deploy."
           fi
 
+      - name: Verify deploy package exists
+        run: |
+          if [ -d "./deploy_pkg/app" ] && [ -f "./deploy_pkg/requirements.txt" ]; then
+            echo "Deploy package verified: app/ directory and requirements.txt found."
+          else
+            echo "::error::Deploy package is missing required files. Ensure app/ directory and requirements.txt are included in the artifact."
+            exit 1
+          fi
+          ls -la ./deploy_pkg
+
       - name: "Deploy to Azure Web App"
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
           app-name: ${{ steps.resolveapp.outputs.app_name }}
           slot-name: "Production"
-          package: deploy_pkg
+          package: ./deploy_pkg
