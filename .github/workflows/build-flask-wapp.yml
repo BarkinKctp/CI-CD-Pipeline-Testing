@@ -129,11 +129,38 @@ jobs:
 
           echo "app_name=$RESOLVED_APP_NAME" >> $GITHUB_OUTPUT
 
-      - name: Configure startup command (Gunicorn)
-        if: ${{ github.event.inputs.resource_group != '' }}
+      - name: Preflight Azure target validation
+        id: preflight
         run: |
           APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
-          RESOURCE_GROUP="${{ github.event.inputs.resource_group }}"
+          INPUT_RESOURCE_GROUP="${{ github.event.inputs.resource_group || '' }}"
+          ACTIVE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+          echo "Azure subscription in workflow context: $ACTIVE_SUBSCRIPTION_ID"
+
+          if [ -n "$INPUT_RESOURCE_GROUP" ]; then
+            if ! az webapp show --name "$APP_NAME" --resource-group "$INPUT_RESOURCE_GROUP" --output none; then
+              echo "::error::Web app '$APP_NAME' was not found in resource group '$INPUT_RESOURCE_GROUP' under subscription '$ACTIVE_SUBSCRIPTION_ID'."
+              echo "::error::Check AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, AZURE_CLIENT_ID, and the resource_group input."
+              exit 1
+            fi
+            RESOLVED_RESOURCE_GROUP="$INPUT_RESOURCE_GROUP"
+          else
+            RESOLVED_RESOURCE_GROUP=$(az webapp list --query "[?name=='$APP_NAME'].resourceGroup | [0]" -o tsv)
+            if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
+              echo "::error::Web app '$APP_NAME' is not visible in subscription '$ACTIVE_SUBSCRIPTION_ID'."
+              echo "::error::Most common cause: GitHub OIDC secrets point to a different subscription/tenant than the app."
+              exit 1
+            fi
+          fi
+
+          echo "Resolved resource group: $RESOLVED_RESOURCE_GROUP"
+          echo "resource_group=$RESOLVED_RESOURCE_GROUP" >> $GITHUB_OUTPUT
+
+      - name: Configure startup command (Gunicorn)
+        run: |
+          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
+          RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
 
           if az webapp config set \
             --name "$APP_NAME" \
