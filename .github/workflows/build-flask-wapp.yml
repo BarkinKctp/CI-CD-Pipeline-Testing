@@ -11,6 +11,10 @@ on:
         description: "Azure Web App name"
         required: false
         type: string
+      resource_group:
+        description: "Azure Resource Group for the target web app. If entered, this exact value is used. If not entered, workflow defaults to <webapp_name>-rg. NOTE: Required when your ARM deployment used a different RG name."
+        required: false
+        type: string
       repo_name:
         description: "Repository name to match in tag value (optional)"
         required: false
@@ -22,10 +26,6 @@ on:
         type: string
       tag_value:
         description: "Explicit tag value override for lookup (optional)"
-        required: false
-        type: string
-      resource_group:
-        description: "Azure Resource Group for the target web app (Note: if not deployed via ARM, the RG name may not follow the naming convention, so provide this input to ensure correct resolution)"
         required: false
         type: string
   pull_request:
@@ -82,6 +82,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
+          path: deploy_pkg
+
+      - name: Debug deployment payload
+        run: |
+          echo "PWD=$(pwd)"
+          ls -la deploy_pkg
+          echo "---- app dir ----"
+          ls -la deploy_pkg/app || echo "NO app/ folder"
+          echo "---- find main.py ----"
+          find deploy_pkg -maxdepth 3 -name "main.py" -print
 
       - name: Create GitHub App token
         id: app
@@ -107,19 +117,9 @@ jobs:
         id: resolveapp
         run: |
           INPUT_APP_NAME="${{ github.event.inputs.webapp_name || '' }}"
-          INPUT_REPO_NAME="${{ github.event.inputs.repo_name || '' }}"
-          INPUT_TAG_KEY="${{ github.event.inputs.tag_key || 'repo' }}"
-          INPUT_TAG_VALUE="${{ github.event.inputs.tag_value || '' }}"
           REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
-          DEFAULT_REPO_NAME="${GITHUB_REPOSITORY#*/}"
-
-          if [ -n "$INPUT_TAG_VALUE" ]; then
-            EFFECTIVE_TAG_VALUE="$INPUT_TAG_VALUE"
-          elif [ -n "$INPUT_REPO_NAME" ]; then
-            EFFECTIVE_TAG_VALUE="$INPUT_REPO_NAME"
-          else
-            EFFECTIVE_TAG_VALUE="$DEFAULT_REPO_NAME"
-          fi
+          TAG_KEY="repo"
+          TAG_VALUE="${GITHUB_REPOSITORY#*/}"
 
           if [ -n "$INPUT_APP_NAME" ]; then
             RESOLVED_APP_NAME="$INPUT_APP_NAME"
@@ -128,15 +128,15 @@ jobs:
             RESOLVED_APP_NAME="$REPO_APP_NAME"
             echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
           else
-            QUERY="[?tags.${INPUT_TAG_KEY}=='${EFFECTIVE_TAG_VALUE}'].name | [0]"
+            QUERY="[?tags.${TAG_KEY}=='${TAG_VALUE}'].name | [0]"
             RESOLVED_APP_NAME=$(az webapp list --query "$QUERY" -o tsv)
             if [ -n "$RESOLVED_APP_NAME" ]; then
-              echo "Using web app found by tag $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE: $RESOLVED_APP_NAME"
+              echo "Using web app found by tag $TAG_KEY=$TAG_VALUE: $RESOLVED_APP_NAME"
             fi
           fi
 
           if [ -z "$RESOLVED_APP_NAME" ]; then
-            echo "No web app name resolved. Provide workflow_dispatch input webapp_name, set repository variable WEBAPP_NAME, or tag a web app with $INPUT_TAG_KEY=$EFFECTIVE_TAG_VALUE." >&2
+            echo "No web app name resolved. Provide workflow_dispatch input webapp_name, set repository variable WEBAPP_NAME, or tag a web app with $TAG_KEY=$TAG_VALUE." >&2
             exit 1
           fi
 
@@ -185,13 +185,28 @@ jobs:
           APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
           RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
 
-          if az webapp config set \
-            --name "$APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"; then
-            echo "Startup command configured for $APP_NAME"
+          for i in {1..10}; do
+            echo "Setting startup command (attempt $i)..."
+            if az webapp config set \
+              --name "$APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"; then
+              echo "Startup command configured for $APP_NAME"
+              break
+            fi
+
+            if [ "$i" -eq 10 ]; then
+              echo "::error::Failed to set startup command for $APP_NAME after retries."
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          if az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP"; then
+            echo "Web app restarted after startup command update"
           else
-            echo "Warning: Unable to update startup command for $APP_NAME (likely missing Microsoft.Web/sites/config permissions). Continuing deploy."
+            echo "Warning: Unable to restart web app after startup command update. Continuing deploy."
           fi
 
       - name: "Deploy to Azure Web App"
@@ -200,4 +215,4 @@ jobs:
         with:
           app-name: ${{ steps.resolveapp.outputs.app_name }}
           slot-name: "Production"
-          package: .
+          package: deploy_pkg

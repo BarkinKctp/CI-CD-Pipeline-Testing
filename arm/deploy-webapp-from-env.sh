@@ -7,8 +7,8 @@ if ! command -v az >/dev/null 2>&1; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARAMETERS_FILE="$SCRIPT_DIR/webapp-managed-identity.parameters.json"
-TEMPLATE_FILE="$SCRIPT_DIR/webapp-managed-identity.template.json"
+PARAMETERS_FILE="$SCRIPT_DIR/azuredeploy.parameters.json"
+TEMPLATE_FILE="$SCRIPT_DIR/azuredeploy.json"
 NO_CACHE=false
 CLEAR_CACHE=false
 

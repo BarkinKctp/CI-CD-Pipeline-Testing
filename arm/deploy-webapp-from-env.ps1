@@ -7,8 +7,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$parametersFile = Join-Path $scriptDir 'webapp-managed-identity.parameters.json'
-$templateFile = Join-Path $scriptDir 'webapp-managed-identity.template.json'
+$parametersFile = Join-Path $scriptDir 'azuredeploy.parameters.json'
+$templateFile = Join-Path $scriptDir 'azuredeploy.json'
 $defaults = $null
 
 if (Test-Path $parametersFile) {

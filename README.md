@@ -39,7 +39,7 @@ Create GitHub secrets:
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
 
->Important
+**Important:**
 - `AZURE_CLIENT_ID` should be the **client ID of the created user-assigned managed identity** used by GitHub OIDC (from ARM output `userAssignedManagedIdentityClientId` or Azure Portal).
 - `AZURE_TENANT_ID` must match that identity tenant.
 - `AZURE_SUBSCRIPTION_ID` must be the target subscription.
@@ -48,10 +48,10 @@ Create GitHub secrets:
 
 ### General info
 - The scripts prompt for `WEBAPP_NAME`, `LOCATION`, `GITHUB_ORGANIZATION_NAME`, and `RESOURCE_GROUP`.
-- If you dont specify prompts, defaults are used from `arm/webapp-managed-identity.parameters.json` (and `RESOURCE_GROUP` defaults from your script flow).
-- Deployment creates/uses a Resource Group and provisions App Service + identity resources from `arm/webapp-managed-identity.template.json`.
+- If you don’t specify prompt values, defaults are used from `arm/azuredeploy.parameters.json` (and `RESOURCE_GROUP` defaults from your script flow).
+- Deployment creates/uses a Resource Group and provisions App Service + identity resources from `arm/azuredeploy.json`.
 - Keep the active Azure subscription correct before running (`az account set --subscription <your-subscription-id>`).
-- You can change default parameter values used by the scripts (for example `webAppName`, `location`, `githubOrganizationName`, SKU values, and tags) in `arm/webapp-managed-identity.parameters.json`.
+- You can change default parameter values used by the scripts (for example `webAppName`, `location`, `githubOrganizationName`, SKU values, and tags) in `arm/azuredeploy.parameters.json`.
 
 ### Setup steps
 Follow these steps on your local machine:
@@ -84,11 +84,11 @@ bash arm/deploy-webapp-from-env.sh
 # Optional: deploy directly with parameters file
 az deployment group create \
 	--resource-group <your-rg> \
-	--template-file arm/webapp-managed-identity.template.json \
-	--parameters @arm/webapp-managed-identity.parameters.json
+	--template-file arm/azuredeploy.json \
+	--parameters @arm/azuredeploy.parameters.json
 ```
 
-PowerShell/Bash prompt cache behavior:
+### Prompt cache behavior
 - Script reuses values in the current shell session by default.
 
 - Force prompt without persisting new values: `./arm/deploy-webapp-from-env.ps1 -NoCache`
@@ -97,19 +97,18 @@ PowerShell/Bash prompt cache behavior:
 - Force prompt and ignore shell-cached values: `bash arm/deploy-webapp-from-env.sh --no-cache`
 - Clear cached prompt values first: `bash arm/deploy-webapp-from-env.sh --clear-cache`
 
+### Resources created
+- Linux App Service Plan (B1)
+- Linux Python Web App (Python 3.14)
+- System-assigned managed identity
+- Startup command: empty by default during ARM provisioning (set later by deployment workflow or manual config)
+- Tags including `repo=CI-CD-Pipeline-Testing`
 
 **Warnings:**
 - `WEBAPP_NAME` must be **globally unique** in Azure App Service.
 - **Not all Azure Locations may support all resource types or SKUs used in the template.**(**Canada Central** is **recommended** for testing).
 - Federated credential creation **can fail if organization/repository/branch values do not match your GitHub Actions OIDC subject.**
 - Run `az account set --subscription <your-subscription-id>` before deployment; if the active subscription is wrong, managed identity role assignment can **fail or target the wrong scope.**
-
-Creates:
-- Linux App Service Plan (B1)
-- Linux Python Web App (Python 3.14)
-- System-assigned managed identity
-- Startup command: empty by default during ARM provisioning (set later by deployment workflow or manual config)
-- Tags including `repo=CI-CD-Pipeline-Testing`
 
 ## GitHub Actions deployment flow without ARM
 > This workflow deploys to an existing Azure Web App; it does not create one.
@@ -127,19 +126,19 @@ If Web App already exists:
 ---
 
 **Web App name resolution order in workflow:**
-1. Tag lookup: `repo=CI-CD-Pipeline-Testing`
-2. `workflow_dispatch` input: `webapp_name`
-3. Repository variable: `WEBAPP_NAME`
+1. `workflow_dispatch` input: `webapp_name`
+2. Repository variable: `WEBAPP_NAME`
+3. Tag lookup: `repo=CI-CD-Pipeline-Testing`
 
 **Trigger deployment:**
 - Automatic: push/PR to `main`
-- Manual: run workflow from Actions and optionally pass `webapp_name` and `resource_group`
+- Manual: run workflow from Actions (optionally pass `webapp_name` and `resource_group`)
 
 ## Troubleshooting
 - No web app name resolved:
-	- Add tag `repo=CI-CD-Pipeline-Testing`, or
 	- Provide `webapp_name` in manual run, or
-	- Set repo variable `WEBAPP_NAME`
+	- Set repo variable `WEBAPP_NAME`, or
+	- Add tag `repo=CI-CD-Pipeline-Testing`
 
 - Azure login/OIDC failures:
 	- Verify client/tenant/subscription IDs
@@ -154,7 +153,7 @@ If Web App already exists:
 - Right-click -> **Deploy to Web App...**
 - Choose this repository folder
 - Set startup command in Web App config if needed:
-	- `gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app`
+	- `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ## Notes
 - Prefer running deployments manually (`workflow_dispatch`) when validating new Azure settings.
