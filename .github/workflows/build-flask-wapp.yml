@@ -97,7 +97,6 @@ jobs:
           INPUT_REPO_NAME="${{ github.event.inputs.repo_name || '' }}"
           INPUT_TAG_KEY="${{ github.event.inputs.tag_key || 'repo' }}"
           INPUT_TAG_VALUE="${{ github.event.inputs.tag_value || '' }}"
-          INPUT_RESOURCE_GROUP="${{ github.event.inputs.resource_group || '' }}"
           REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
           DEFAULT_REPO_NAME="${GITHUB_REPOSITORY#*/}"
 
@@ -128,43 +127,22 @@ jobs:
             exit 1
           fi
 
-          if [ -n "$INPUT_RESOURCE_GROUP" ]; then
-            RESOLVED_RESOURCE_GROUP="$INPUT_RESOURCE_GROUP"
-            echo "Using workflow_dispatch input resource_group: $RESOLVED_RESOURCE_GROUP"
-          else
-            RESOLVED_RESOURCE_GROUP=$(az webapp list --query "[?name=='$RESOLVED_APP_NAME'].resourceGroup | [0]" -o tsv)
-            if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
-              RESOLVED_RESOURCE_GROUP=$(az resource list --name "$RESOLVED_APP_NAME" --resource-type Microsoft.Web/sites --query "[0].resourceGroup" -o tsv)
-            fi
-            if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
-              CANDIDATE_RESOURCE_GROUP="rg-$RESOLVED_APP_NAME"
-              if az webapp show --name "$RESOLVED_APP_NAME" --resource-group "$CANDIDATE_RESOURCE_GROUP" --query "name" -o tsv >/dev/null 2>&1; then
-                RESOLVED_RESOURCE_GROUP="$CANDIDATE_RESOURCE_GROUP"
-                echo "Using naming-convention fallback resource group: $RESOLVED_RESOURCE_GROUP"
-              fi
-            fi
-          fi
-
-          if [ -z "$RESOLVED_RESOURCE_GROUP" ]; then
-            ACTIVE_SUB=$(az account show --query id -o tsv)
-            echo "Unable to resolve resource group for app: $RESOLVED_APP_NAME" >&2
-            echo "Active subscription: $ACTIVE_SUB" >&2
-            echo "Provide workflow_dispatch input resource_group, set repo variable WEBAPP_RESOURCE_GROUP, or verify AZURE_SUBSCRIPTION_ID." >&2
-            exit 1
-          fi
-
           echo "app_name=$RESOLVED_APP_NAME" >> $GITHUB_OUTPUT
-          echo "resource_group=$RESOLVED_RESOURCE_GROUP" >> $GITHUB_OUTPUT
 
       - name: Configure startup command (Gunicorn)
+        if: ${{ github.event.inputs.resource_group != '' }}
         run: |
           APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
-          RESOURCE_GROUP="${{ steps.resolveapp.outputs.resource_group }}"
+          RESOURCE_GROUP="${{ github.event.inputs.resource_group }}"
 
-          az webapp config set \
+          if az webapp config set \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
-            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir app main:app"; then
+            echo "Startup command configured for $APP_NAME"
+          else
+            echo "Warning: Unable to update startup command for $APP_NAME (likely missing Microsoft.Web/sites/config permissions). Continuing deploy."
+          fi
 
       - name: "Deploy to Azure Web App"
         uses: azure/webapps-deploy@v3
