@@ -1,8 +1,11 @@
 from flask import Flask, render_template
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ModuleNotFoundError:
+    pass
 
 app = Flask(__name__, template_folder='.', static_folder='.', static_url_path='/static')
 

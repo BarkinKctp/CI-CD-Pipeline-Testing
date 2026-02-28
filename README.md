@@ -121,7 +121,7 @@ Create GitHub secrets:
 - `AZURE_SUBSCRIPTION_ID`
 
 >Important
-- `AZURE_CLIENT_ID` should match the identity/app registration used by your pipeline.
+- `AZURE_CLIENT_ID` should be the **client ID of the created user-assigned managed identity** used by GitHub OIDC (from ARM output `userAssignedManagedIdentityClientId` or Azure Portal).
 - `AZURE_TENANT_ID` must match that identity tenant.
 - `AZURE_SUBSCRIPTION_ID` must be the target subscription.
 
@@ -136,6 +136,7 @@ Create GitHub secrets:
 	- Verify federated credential subject matches repo/branch/event
 	- Verify RBAC assignment exists for identity
 	- If you see `AuthorizationFailed` on `Microsoft.Web/sites/read`, grant at least `Reader` on the target Web App or Resource Group to the deployment identity
+	- If you see `No matching federated identity record found`, your federated credential subject does not match the branch/ref used by the workflow run (for example `main` vs `pgbench/*`)
 
 ## VS Code manual deploy
 - Install Azure App Service extension
