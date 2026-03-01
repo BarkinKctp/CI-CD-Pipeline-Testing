@@ -24,6 +24,16 @@ jobs:
                   private-key: ${{ secrets.GH_APP_KEY }}
                   owner: ${{ github.repository_owner }}
 
+           #- name: Export token to environment
+           #  run: echo "GH_TOKEN=$ {{ steps.app.outputs.token }}" >> $GITHUB_ENV
+           #  Makes it avaliable to the whole workflow without needing to pass it explicitly to each step. 
+           #  GH_TOKEN is a common name for GitHub tokens, and some tools might expect it to be named this way.
+           
+            - name: Validate token
+              env:
+                  GH_TOKEN: ${{ steps.app.outputs.token }}
+              run: gh repo view 
+            
             - name: Check out repository
               uses: actions/checkout@v4
               with:
