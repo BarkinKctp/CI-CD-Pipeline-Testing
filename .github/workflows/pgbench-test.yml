@@ -92,11 +92,15 @@ jobs:
       - name: Resolve web app name
         id: resolveapp
         run: |
+          INPUT_APP_NAME="${{ github.event.inputs.webapp_name || '' }}"
           REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
           TAG_KEY="repo"
           TAG_VALUE="${GITHUB_REPOSITORY#*/}"
 
-          if [ -n "$REPO_APP_NAME" ]; then
+          if [ -n "$INPUT_APP_NAME" ]; then
+            RESOLVED_APP_NAME="$INPUT_APP_NAME"
+            echo "Using workflow_dispatch input webapp_name: $RESOLVED_APP_NAME"
+          elif [ -n "$REPO_APP_NAME" ]; then
             RESOLVED_APP_NAME="$REPO_APP_NAME"
             echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
           else
@@ -119,7 +123,7 @@ jobs:
         run: |
           APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
           INPUT_RESOURCE_GROUP="${{ github.event.inputs.resource_group || '' }}"
-          ACTIVE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          ACTIVE_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
           echo "Azure subscription in workflow context: $ACTIVE_SUBSCRIPTION_ID"
           echo "Input resource group: $INPUT_RESOURCE_GROUP"
