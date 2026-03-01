@@ -59,11 +59,10 @@ Create GitHub secrets:
 - Scripts prompt for `WEBAPP_NAME`, `LOCATION`, `GITHUB_ORGANIZATION_NAME`, and `RESOURCE_GROUP`.
 - Defaults come from `azuredeploy.parameters.json`.
 - Customize values such as `webAppName`, `location`, `githubOrganizationName`, SKU settings, and `tags` in the parameters file.
-- Deployment provisions App Service and identity resources from `azuredeploy.json`.
-**Warnings:**
 - `WEBAPP_NAME` must be **globally unique** in Azure App Service.
-- **Not all Azure regions support all SKUs/resources** (**Canada Central** is recommended for testing).
-- Federated credential creation **can fail if organization/repository/branch values do not match your GitHub Actions OIDC subject.**
+- Not all Azure regions support all SKUs/resources - (**Canada Central** is recommended for testing).
+- Federated credential creation can **fail** if the specified values do not match your GitHub Actions OIDC subject.
+- Deployment provisions App Service and identity resources from `azuredeploy.json`.
 
 ### Setup steps for PowerShell and Bash
 Follow these steps on your local machine:
@@ -86,12 +85,15 @@ $env:LOCATION="canadacentral"
 $env:GITHUB_ORGANIZATION_NAME="your-github-user-or-org"
 $env:RESOURCE_GROUP="your-rg-name"
 
+# Run Script File
 ./deploy-webapp-powershell.ps1
+
 #Force prompt without persisting new values: 
 ./deploy-webapp-powershell.ps1 -NoCache
 
 # Clear cached prompt values:
 ./deploy-webapp-powershell.ps1 -ClearCache
+
 ```
 ---
 
@@ -106,11 +108,15 @@ export LOCATION=canadacentral
 export GITHUB_ORGANIZATION_NAME=your-github-user-or-org
 export RESOURCE_GROUP=your-rg-name
 
+# Run Script File
 bash ./deploy-webapp-bash.sh
+
 # Force prompt and ignore shell-cached values: 
 bash ./deploy-webapp-bash.sh --no-cache
+
 # Clear cached prompt values:
 bash ./deploy-webapp-bash.sh --clear-cache
+
 ```
 ---
 
@@ -127,14 +133,18 @@ az deployment group create \
 - Linux App Service Plan (B1)
 - Linux Python Web App (Python 3.12)
 - System-assigned managed identity
-- Startup command: empty by default during ARM provisioning (set later by deployment workflow or manual config)
+- Startup command: Empty by default - (set later by deployment workflow or manual config)
 - Tags including `repo=<repository-name>`
 
 ## VS Code manual deploy
 - Install Azure App Service extension
 - Sign in and select your Web App
 - Right-click project folder -> **Deploy to Web App...**
+- Deploy Managed identity from Azure portal
+- Add Federated credential and permissions to the Managed Identity
 - Startup command (if needed): `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
+
+---
 
 ## Deployment Flow
 > Main workflow deploys to an existing Azure Web App. It does not create one.
@@ -164,7 +174,7 @@ flowchart LR
 5. On failure: restart app + wait 20s, then deploy attempt 2
 6. On success: set startup command and restart app
 
-Startup command used:
+- Startup command used:
 `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ## Notes
@@ -174,7 +184,7 @@ Startup command used:
 - **Security:** GitHub OIDC only (no long-lived Azure secrets), least-privilege RBAC, and isolated Web App identity.
 
 ## Troubleshooting
-- **No web app resolved:** provide `webapp_name`, set `WEBAPP_NAME`, or set matching tag on the web app.
-- **`AuthorizationFailed`:** grant at least Reader on the target Web App/Resource Group.
+- **No web app resolved:** provide `WEBAPP_NAME` variable, `webapp_name` on workflow run, or matching tag on the web app.
+- `AuthorizationFailed`: grant at least Reader on the target Web App/Resource Group.
 - **OIDC mismatch:** ensure federated credential subject matches repo/branch/ref.
 - **Wrong subscription:** run `az account show` and `az account set --subscription <id>`.
