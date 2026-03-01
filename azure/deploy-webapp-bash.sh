@@ -111,13 +111,6 @@ if [[ -n "${GITHUB_ORGANIZATION_NAME:-}" ]]; then
   DEPLOY_PARAMS+=(githubOrganizationName="$GITHUB_ORGANIZATION_NAME")
 fi
 
-if [[ -n "$client_id" ]]; then
-  echo "Client ID of Managed Identity (for reference): $client_id"
-else
-  echo "Warning: Unable to resolve managed identity client ID right now. You can run: az identity show --name $MANAGED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --query clientId -o tsv"
-fi
-echo "GitHub Organization: ${GITHUB_ORGANIZATION_NAME:-<template-default>}"
-
 echo "Warning: Web App name must be globally unique in Azure."
 echo "Warning: Not all Azure Locations may support all resource types or SKUs used in the template.(Canada Central is recommended for testing)."
 echo "Warning: Federated credential can fail if org/repo/branch do not match your GitHub workflow subject or if credential values differ unexpectedly."
@@ -136,3 +129,9 @@ echo "Resource Group: $RESOURCE_GROUP"
 echo "App Service Plan: $APP_SERVICE_PLAN_NAME"
 echo "Managed Identity: $MANAGED_IDENTITY_NAME"
 client_id="$(az identity show --name "$MANAGED_IDENTITY_NAME" --resource-group "$RESOURCE_GROUP" --query clientId -o tsv 2>/dev/null || true)"
+if [[ -n "$client_id" ]]; then
+  echo "Client ID of Managed Identity (for reference): $client_id"
+else
+  echo "Warning: Unable to resolve managed identity client ID right now. You can run: az identity show --name $MANAGED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --query clientId -o tsv"
+fi
+echo "GitHub Organization: ${GITHUB_ORGANIZATION_NAME:-<template-default>}"
