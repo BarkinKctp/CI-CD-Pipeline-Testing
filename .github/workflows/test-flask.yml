@@ -31,8 +31,8 @@ jobs:
            
             - name: Validate token
               env:
-                  GH_TOKEN: ${{ steps.app.outputs.token }}
-              run: gh repo view 
+                GH_TOKEN: ${{ steps.app.outputs.token }}
+              run: gh repo view ${{ github.repository }}
             
             - name: Check out repository
               uses: actions/checkout@v4
