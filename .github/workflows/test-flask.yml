@@ -29,17 +29,12 @@ jobs:
            #  Makes it avaliable to the whole workflow without needing to pass it explicitly to each step. 
            #  GH_TOKEN is a common name for GitHub tokens, and some tools might expect it to be named this way.
            
-            - name: Validate token
-              env:
-                GH_TOKEN: ${{ steps.app.outputs.token }}
-              run: gh repo view ${{ github.repository }}
-            
             - name: Check out repository
               uses: actions/checkout@v4
               with:
                   token: ${{ steps.app.outputs.token }}
 
-            - name: Use token (gh / curl / etc.)
+            - name: Validate token (gh / curl / etc.)
               env:
                   GH_TOKEN: ${{ steps.app.outputs.token }}
               run: |
