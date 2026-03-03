@@ -188,3 +188,7 @@ flowchart LR
 - `AuthorizationFailed`: grant at least Reader on the target Web App/Resource Group.
 - **OIDC mismatch:** ensure federated credential subject matches repo/branch/ref.
 - **Wrong subscription:** run `az account show` and `az account set --subscription <id>`.
+
+ **Additional guides for configuring this pipeline:**
+
+- [Flexible Federated Credential Setup](docs/security/flexible-federated-credential.md)
