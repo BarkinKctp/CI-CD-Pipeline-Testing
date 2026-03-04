@@ -21,6 +21,8 @@ Flexible Federated Credentials allow **pattern-based claim matching** using expr
 
 Flexible Federated Credentials are especially useful in CI/CD environments where pipelines run on **multiple feature branches or dynamically created branches**.
 
+---
+
 ### How this differs from Managed Identity
 
 Flexible Federated Credentials and Managed Identities solve different parts of the authentication flow.
@@ -30,12 +32,13 @@ Flexible Federated Credentials and Managed Identities solve different parts of t
 
 Key differences:
 
-| Feature | Flexible Federated Credential (App Registration) | Managed Identity |
-|--------|--------|--------|
-| Identity type | Azure App Registration / Service Principal | Azure resource identity |
-| Intended use | External workloads (GitHub Actions, CI/CD, external systems) | Azure resources accessing other Azure services |
-| Credential management | Uses **OIDC token exchange** (no secrets) | Managed automatically by Azure |
-| Typical scenario | CI/CD pipelines authenticating to Azure | App Service / VM accessing Key Vault, Storage, etc |
+| Feature | App Registration | Managed Identity |
+|--------|------------------|------------------|
+| Identity type | Service Principal in Azure Entra ID | Identity attached to an Azure resource |
+| Intended use | External workloads (GitHub Actions, CI/CD) | Azure resources accessing other Azure services |
+| Authentication | OIDC token exchanged with Azure Entra ID | Token issued via Azure Instance Metadata Service |
+| Secrets required |  No |  No |
+| Typical use | CI/CD pipelines authenticating to Azure | App Service / VM accessing Key Vault, Storage, etc |
 
 ---
 
