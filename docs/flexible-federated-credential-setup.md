@@ -204,16 +204,12 @@ OIDC authentication removes the need for:
 
 GitHub issues a **short-lived** token for each workflow run, which Azure validates through the federated credential.
 
+These credentials allow pattern-based claim matching (such as branch prefixes or workflow filters) so that a single credential can authorize multiple CI/CD workflows instead of creating separate credentials for each branch or workflow.
+
 ## References
 
 Official Microsoft documentation on Flexible Federated Identity Credentials:
 
 - Microsoft Learn – Flexible Federated Identity Credentials  
   https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-flexible-federated-identity-credentials
-
-These credentials allow pattern-based claim matching (such as branch prefixes or workflow filters) so that a single credential can authorize multiple CI/CD workflows instead of creating separate credentials for each branch or workflow. :contentReference[oaicite:0]{index=0}
-
-
-
-
 
