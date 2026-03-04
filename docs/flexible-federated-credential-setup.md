@@ -7,6 +7,21 @@ This guide shows how to authenticate GitHub Actions to Azure **without secrets**
 
 ---
 
+## Why Flexible Federated Credentials?
+
+Standard Azure Federated Identity Credentials require **exact claim matching**, meaning each branch, tag, or workflow often needs its own credential.
+
+Flexible Federated Credentials allow **pattern-based claim matching** using expressions such as `matches`, which enables:
+
+- **Wildcard branch support** (e.g. `pgbench/*`)
+- **Reusable credentials across multiple workflows**
+- **Reduced credential management overhead**
+- **Avoiding Azure's federated credential limits**
+
+Flexible Federated Credentials are especially useful in CI/CD environments where pipelines run on **multiple feature branches or dynamically created branches**.
+
+---
+
 ## Prerequisites
 
 - You have an Azure Subscription where you can:
@@ -110,13 +125,13 @@ Steps:
 5. Select it and click **Review + Assign**
 
 > Example:  
-> `pgbench-tests-FIC` (App Registration used for CI/CD)
+> `gh-oidc-ci-cd` (App Registration used for CI/CD)
 
 ---
 
 ## 5. Configure Workflow Triggers and OIDC Authentication
 
-Configure your GitHub Actions workflow to run on the desired branch prefix and authenticate to Azure using OIDC.
+>Configure your GitHub Actions workflow to run on the desired branch prefix and authenticate to Azure using OIDC.
 
 
 Example workflow trigger for `pgbench/*` branches:
@@ -151,7 +166,7 @@ permissions:
 
 ### AADSTS700213 – No matching federated identity record found
 
-This error occurs when the claims in the GitHub OIDC token do not match the conditions defined in the Federated Credential.
+>This error occurs when the claims in the GitHub OIDC token do not match the conditions defined in the Federated Credential.
 
 Common causes:
 
@@ -165,6 +180,7 @@ Check the GitHub Actions logs from the `azure/login` step. The logs usually show
 If `azure/login` works but deployment commands fail, the App Registration likely lacks the required RBAC role.
 
 Verify that the correct role has been assigned under:
+
 Subscription → Access Control (IAM)
 
 ---
@@ -174,8 +190,6 @@ Subscription → Access Control (IAM)
 ### Restrict Federated Credentials
 
 Avoid allowing all branches or workflows. Restrict authentication as much as possible.
-
-### Use Resource Group Scope When Possible
 
 Instead of granting permissions at the subscription level, assign RBAC roles at the **resource group level** whenever possible.
 
@@ -191,7 +205,7 @@ OIDC authentication removes the need for:
 - Long-lived credentials
 - Rotating tokens
 
-GitHub issues a short-lived token for each workflow run, which Azure validates through the federated credential.
+>GitHub issues a short-lived token for each workflow run, which Azure validates through the federated credential.
 
 ## References
 
