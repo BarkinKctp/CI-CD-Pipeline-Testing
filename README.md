@@ -1,5 +1,9 @@
 # CI-CD-Pipeline-Testing
 
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Azure](https://img.shields.io/badge/azure-app%20service-blue)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-black)
+
 Simple Flask project for practicing and validating CI/CD workflows.
 
 ## Table of Contents
@@ -12,6 +16,7 @@ Simple Flask project for practicing and validating CI/CD workflows.
 - [Deployment Flow](#deployment-flow)
 - [Notes](#notes)
 - [Troubleshooting](#troubleshooting)
+- [Additional documentation](#additional-documentation)
 
 ## General overview
 - Practice secure OIDC-based Azure deployments
@@ -49,9 +54,16 @@ Create GitHub secrets:
 - `AZURE_SUBSCRIPTION_ID`
 
 **Important:**
-- `AZURE_CLIENT_ID` should be the **client ID of the created user-assigned managed identity**.
+- `AZURE_CLIENT_ID` should be the **client ID of the identity used for OIDC authentication** (managed identity or App Registration).
 - `AZURE_TENANT_ID` must match that **identity tenant**.
 - `AZURE_SUBSCRIPTION_ID` must be the **target subscription**.
+
+In this repository the ARM template provisions a **system-assigned managed identity** attached to the Web App.
+Alternatively, an **Azure App Registration (Service Principal)** can be used for CI/CD authentication.
+
+See the additional documentation for a step-by-step guide on configuring App Registration with OIDC:
+
+[Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)
 
 ## Azure template deployment
 
@@ -140,8 +152,8 @@ az deployment group create \
 - Install Azure App Service extension
 - Sign in and select your Web App
 - Right-click project folder -> **Deploy to Web App...**
-- Deploy Managed identity from Azure portal
-- Add Federated credential and permissions to the Managed Identity
+- Configure the Managed Identity or App Registration in the Azure portal
+- Add Federated credential and permissions to the Managed Identity / App Registration
 - Startup command (if needed): `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ---
@@ -191,6 +203,20 @@ flowchart LR
 
 ---
 
-**Additional guides for configuring this pipeline:**
+## Additional documentation
+
+Detailed guides related to this CI/CD setup:
 
 - [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)
+  Step-by-step configuration for Azure OIDC authentication using flexible federated credentials.
+
+### References
+
+- Azure OIDC authentication with GitHub Actions  
+  https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect
+
+- Flexible Federated Identity Credentials (Microsoft Entra)  
+  https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-flexible-federated-identity-credentials
+
+- Azure App Service deployment with GitHub Actions  
+  https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions
