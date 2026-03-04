@@ -1,9 +1,9 @@
 # Azure Flexible Federated Credential for GitHub Actions (OIDC Login)
-Example: `pgbench/*` branch prefix
 
 This guide shows how to authenticate GitHub Actions to Azure **without secrets** using **OIDC** and an **Azure App Registration** with a **Flexible Federated Identity Credential (FIC)**.
 
 > Result: GitHub Actions can run `azure/login@v2` using OIDC and then deploy / run Azure CLI commands securely.
+> Example: `pgbench/*` branch prefix
 
 ---
 
@@ -27,6 +27,7 @@ Flexible Federated Credentials are especially useful in CI/CD environments where
 - You have an Azure Subscription where you can:
   - Create an App Registration
   - Assign roles (RBAC) at subscription or resource-group scope
+    
 - Your workflow will request OIDC tokens:
   - `permissions: id-token: write`
 
@@ -79,13 +80,11 @@ Use:
 - **Subject** (flexible claim matching expression example):
 `claims['sub'] matches 'repo:<repo>:ref:refs/heads/pgbench/*' and claims['job_workflow_ref'] matches '<repo>/.github/workflows/<workflow>@refs/heads/pgbench/*'`
 
-
-> This targets **only** pushes/PRs on branches like `pgbench/*` and only when the workflow file path matches.
->  
-> If your repo/workflow path differs, update both parts.
-
 - **Audience** (recommended for Azure OIDC):
 `api://AzureADTokenExchange`
+
+This targets **only** pushes/PRs on branches like `pgbench/*` and only when the workflow file path matches.
+If your repo/workflow path differs, update both parts.
 
 ---
 
@@ -131,8 +130,7 @@ Steps:
 
 ## 5. Configure Workflow Triggers and OIDC Authentication
 
->Configure your GitHub Actions workflow to run on the desired branch prefix and authenticate to Azure using OIDC.
-
+Configure your GitHub Actions workflow to run on the desired branch prefix and authenticate to Azure using OIDC.
 
 Example workflow trigger for `pgbench/*` branches:
 
@@ -205,7 +203,7 @@ OIDC authentication removes the need for:
 - Long-lived credentials
 - Rotating tokens
 
->GitHub issues a short-lived token for each workflow run, which Azure validates through the federated credential.
+GitHub issues a **short-lived** token for each workflow run, which Azure validates through the federated credential.
 
 ## References
 
