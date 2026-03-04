@@ -193,4 +193,4 @@ flowchart LR
 
 **Additional guides for configuring this pipeline:**
 
-- [Flexible Federated Credential Setup](docs/security/flexible-federated-credential.md)
+- [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)
