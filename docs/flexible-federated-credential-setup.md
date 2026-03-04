@@ -3,6 +3,7 @@
 This guide shows how to authenticate GitHub Actions to Azure **without secrets** using **OIDC** and an **Azure App Registration** with a **Flexible Federated Identity Credential (FIC)**.
 
 > Result: GitHub Actions can run `azure/login@v2` using OIDC and then deploy / run Azure CLI commands securely.
+> 
 > Example: `pgbench/*` branch prefix
 
 ---
@@ -11,7 +12,7 @@ This guide shows how to authenticate GitHub Actions to Azure **without secrets**
 
 Standard Azure Federated Identity Credentials require **exact claim matching**, meaning each branch, tag, or workflow often needs its own credential.
 
-Flexible Federated Credentials allow **pattern-based claim matching** using expressions such as `matches`, which enables:
+Flexible Federated Credentials allow **pattern-based claim matching** using expressions such as `matches`, `eq`, `and` which enables:
 
 - **Wildcard branch support** (e.g. `pgbench/*`)
 - **Reusable credentials across multiple workflows**
@@ -115,6 +116,7 @@ Recommended roles:
 | Website Contributor | Deploying to Azure App Service |
 | Web Plan Contributor | Managing App Service Plans |
 
+
 Steps:
 
 1. Select the role
@@ -164,7 +166,7 @@ permissions:
 
 ### AADSTS700213 – No matching federated identity record found
 
->This error occurs when the claims in the GitHub OIDC token do not match the conditions defined in the Federated Credential.
+This error occurs when the claims in the GitHub OIDC token do not match the conditions defined in the Federated Credential.
 
 Common causes:
 
@@ -173,13 +175,10 @@ Common causes:
 - Repository owner or repository name mismatch
 - Incorrect issuer URL
 - Azure RBAC not configured properly:
+- Verify assigned roles: Subscription → Access Control (IAM)
 
 Check the GitHub Actions logs from the `azure/login` step. The logs usually show the claims used in the authentication request.
 If `azure/login` works but deployment commands fail, the App Registration likely lacks the required RBAC role.
-
-Verify that the correct role has been assigned under:
-
-Subscription → Access Control (IAM)
 
 ---
 
