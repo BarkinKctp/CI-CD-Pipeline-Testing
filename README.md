@@ -58,8 +58,17 @@ Create GitHub secrets:
 - `AZURE_TENANT_ID` must match that **identity tenant**.
 - `AZURE_SUBSCRIPTION_ID` must be the **target subscription**.
 
+---
+
+### Identity options for OIDC authentication
+
 In this repository the ARM template provisions a **system-assigned managed identity** attached to the Web App.
+
 Alternatively, an **Azure App Registration (Service Principal)** can be used for CI/CD authentication.
+
+In general:
+- **App Registration** is typically preferred for **CI/CD pipelines**, since it represents an external workload (e.g., GitHub Actions) authenticating to Azure using OIDC.
+- **Managed Identity** is commonly used by **Azure resources themselves** (VMs, App Service, Functions) to securely access other Azure services such as Key Vault, Storage, or databases.
 
 See the additional documentation for a step-by-step guide on configuring App Registration with OIDC:
 
