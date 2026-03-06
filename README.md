@@ -219,6 +219,9 @@ Detailed guides related to this CI/CD setup:
 - [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)
   Step-by-step configuration for Azure OIDC authentication using flexible federated credentials.
 
+ - [GitHub App Authentication Example](docs/github-app-example.md)
+   
+
 ### References
 
 - Azure OIDC authentication with GitHub Actions  
