@@ -216,10 +216,11 @@ flowchart LR
 
 Detailed guides related to this CI/CD setup:
 
-- [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)
+- [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)  
   Step-by-step configuration for Azure OIDC authentication using flexible federated credentials.
 
- - [GitHub App Authentication Example](docs/github-app-example.md)
+- [GitHub App Authentication Example](docs/github-app-example.md)  
+  Overview of GitHub App authentication in GitHub Actions, explaining how it differs from PATs and enables secure cross-repository automation.
    
 
 ### References
