@@ -3,6 +3,7 @@ import os
 from unittest.mock import patch
 
 from app.main import app
+from app.publish_test import TestPublish
 
 class TestMain(unittest.TestCase):
     def setUp(self):
