@@ -42,8 +42,7 @@ def run_build_packages():
     gh_token = context['token']
     platform = context['platform']
 
-    if not gh_token:
-        raise ValueError('GH_TOKEN is required to build Docker test packages.')
+    non_empty(non_blank(str))(gh_token, 'gh_token')
 
     for command in build_packages(gh_token, platform):
         subprocess.run(command, check=True)

@@ -2,6 +2,8 @@ import os
 import unittest
 from unittest.mock import patch
 
+from parameters_validation import non_blank, non_empty
+
 from app.build_packages import build_packages
 from app.gh_token_platform import build_gh_token_platform
 
@@ -40,6 +42,14 @@ class TestBuildPackages(unittest.TestCase):
                 'app/publish_test.py',
             ],
         )
+
+    def test_build_packages_raises_on_empty_gh_token(self):
+        with self.assertRaises(Exception):
+            non_empty(str)('', 'gh_token')
+
+    def test_build_packages_raises_on_blank_gh_token(self):
+        with self.assertRaises(Exception):
+            non_blank(str)('   ', 'gh_token')
 
     def test_gh_token_clone_url_format(self):
         with patch.dict(
