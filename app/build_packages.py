@@ -2,9 +2,12 @@ import os
 import subprocess
 
 from app.gh_token_platform import build_gh_token_platform
+from parameters_validation import non_empty, non_blank
 
 
 def build_packages(gh_token, platform):
+    non_empty(non_blank(str))(gh_token, 'gh_token')
+
     context = build_gh_token_platform()
     image_name = context['image_name']
     target_repo = context['target_repo']
