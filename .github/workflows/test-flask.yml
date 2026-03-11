@@ -82,17 +82,21 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           IMAGE_NAME: flask-app-test
         run: |
+          PYTHON_SCRIPT=$(cat <<'PY'
+          import os
+          from parameters_validation import non_blank, non_empty
+
+          token = os.environ.get('GH_TOKEN', '')
+          non_empty(non_blank(str))(token, 'gh_token')
+          print('gh_token is accessible and valid inside Docker container')
+          PY
+          )
+
           docker run --rm \
             -e GH_TOKEN=${{ steps.app.outputs.token }} \
             -e GITHUB_ACTIONS=true \
-            $IMAGE_NAME \
-            python -c "
-            import os
-            from parameters_validation import non_blank, non_empty
-            token = os.environ.get('GH_TOKEN', '')
-            non_empty(non_blank(str))(token, 'gh_token')
-            print('gh_token is accessible and valid inside Docker container')
-            "
+            "$IMAGE_NAME" \
+            python -c "$PYTHON_SCRIPT"
 
       - name: Write test result file
         if: always()
