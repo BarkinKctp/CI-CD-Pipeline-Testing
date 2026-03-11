@@ -6,6 +6,7 @@ import tempfile
 from urllib import error, request
 
 from app.main import app
+from app.gh_token_platform import build_gh_token_platform
 
 
 class TestPublish(unittest.TestCase):
@@ -26,13 +27,14 @@ class TestPublish(unittest.TestCase):
 		if os.environ.get('GITHUB_ACTIONS') != 'true':
 			self.skipTest('GH token clone test only runs in GitHub Actions.')
 
-		token = os.environ.get('GH_TOKEN')
-		target_repo = os.environ.get('TARGET_REPO')
+		platform = build_gh_token_platform()
+		token = platform['token']
+		target_repo = platform['target_repo']
+		repo_url = platform['clone_url']
 
 		self.assertTrue(token, 'GH_TOKEN is missing in workflow test environment.')
 		self.assertTrue(target_repo, 'TARGET_REPO is missing in workflow test environment.')
-
-		repo_url = f'https://x-access-token:{token}@github.com/{target_repo}.git'
+		self.assertTrue(repo_url, 'Authenticated clone URL could not be built from GH_TOKEN platform context.')
 
 		with tempfile.TemporaryDirectory() as temp_dir:
 			clone_dir = os.path.join(temp_dir, 'repo-under-test')

@@ -63,13 +63,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
+          PLATFORM: debian
+          IMAGE_NAME: flask-app-test
         run: |
-          docker build -t flask-app-test .
-          docker run --rm \
-            -e GH_TOKEN="$GH_TOKEN" \
-            -e TARGET_REPO="$TARGET_REPO" \
-            -e GITHUB_ACTIONS=true \
-            flask-app-test
+          python -m app.build_packages
 
       - name: Write test result file
         if: always()
