@@ -1,7 +1,4 @@
 import os
-import unittest
-
-from app.publish_test import TestPublish
 
 
 def build_gh_token_platform():
@@ -22,7 +19,3 @@ def build_gh_token_platform():
         'github_actions': 'true',
         'clone_url': clone_url,
     }
-
-
-def build_publish_test_suite(loader):
-    return loader.loadTestsFromTestCase(TestPublish)

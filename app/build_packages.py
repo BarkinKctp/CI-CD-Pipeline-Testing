@@ -25,6 +25,10 @@ def build_packages(gh_token, platform):
             '-e',
             f'PLATFORM={platform}',
             image_name,
+            'python',
+            '-m',
+            'unittest',
+            'app/publish_test.py',
         ],
     ]
     return commands

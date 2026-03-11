@@ -50,11 +50,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Check Normal Clone Access to Private Repo # Should Fail
+        run: git clone https://github.com/BarkinKctp/ghapp-oidc-deploy-test.git
+          
+
       - name: Run main tests
         id: main_tests
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
+          EXPECTED_PRIVATE_REPO: BarkinKctp/ghapp-oidc-deploy-test
         run: |
           python -m unittest app/main_test.py
 
