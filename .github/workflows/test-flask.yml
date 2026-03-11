@@ -53,6 +53,7 @@ jobs:
       - name: Run main tests
         id: main_tests
         env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
         run: |
           python -m unittest app/main_test.py
