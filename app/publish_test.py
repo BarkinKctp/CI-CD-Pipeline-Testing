@@ -1,6 +1,8 @@
 import unittest
 import json
 import os
+import subprocess
+import tempfile
 from urllib import error, request
 
 from app.main import app
@@ -20,9 +22,9 @@ class TestPublish(unittest.TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.get_data(as_text=True), '54321')
 
-	def test_gh_token_can_access_target_repo(self):
+	def test_gh_token_can_clone_target_repo(self):
 		if os.environ.get('GITHUB_ACTIONS') != 'true':
-			self.skipTest('GH token integration test only runs in GitHub Actions.')
+			self.skipTest('GH token clone test only runs in GitHub Actions.')
 
 		token = os.environ.get('GH_TOKEN')
 		target_repo = os.environ.get('TARGET_REPO')
@@ -30,25 +32,25 @@ class TestPublish(unittest.TestCase):
 		self.assertTrue(token, 'GH_TOKEN is missing in workflow test environment.')
 		self.assertTrue(target_repo, 'TARGET_REPO is missing in workflow test environment.')
 
-		api_url = f'https://api.github.com/repos/{target_repo}'
-		headers = {
-			'Authorization': f'Bearer {token}',
-			'Accept': 'application/vnd.github+json',
-			'X-GitHub-Api-Version': '2022-11-28',
-			'User-Agent': 'gh-app-token-passability-test'
-		}
+		repo_url = f'https://x-access-token:{token}@github.com/{target_repo}.git'
 
-		try:
-			with request.urlopen(request.Request(api_url, headers=headers)) as response:
-				payload = json.loads(response.read().decode('utf-8'))
-		except error.HTTPError as http_err:
-			self.fail(f'GitHub API rejected GH_TOKEN for {target_repo}: HTTP {http_err.code}')
+		with tempfile.TemporaryDirectory() as temp_dir:
+			clone_dir = os.path.join(temp_dir, 'repo-under-test')
+			result = subprocess.run(
+				['git', 'clone', '--depth', '1', repo_url, clone_dir],
+				capture_output=True,
+				text=True,
+				check=False,
+			)
 
-		full_name = payload.get('full_name', '')
 		self.assertEqual(
-			full_name.lower(),
-			target_repo.lower(),
-			f'GH_TOKEN can call API but not access expected repo {target_repo}.'
+			result.returncode,
+			0,
+			f'git clone failed for {target_repo}. Exit code: {result.returncode}',
+		)
+		self.assertTrue(
+			os.path.isdir(os.path.join(clone_dir, '.git')),
+			'git clone reported success but no .git directory was found.',
 		)
 
 
