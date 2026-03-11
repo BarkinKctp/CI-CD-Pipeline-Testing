@@ -53,10 +53,23 @@ jobs:
       - name: Run main tests
         id: main_tests
         env:
-   
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
         run: |
           python -m unittest app/main_test.py
+
+      - name: Build image and run tests in Docker
+        id: docker_tests
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
+        run: |
+          docker build -t flask-app-test .
+          docker run --rm \
+            -e GH_TOKEN="$GH_TOKEN" \
+            -e TARGET_REPO="$TARGET_REPO" \
+            -e GITHUB_ACTIONS=true \
+            flask-app-test
 
       - name: Write test result file
         if: always()
@@ -64,7 +77,7 @@ jobs:
           mkdir -p results
 
           TEST_STATUS="failure"
-          if [ "${{ steps.main_tests.outcome }}" = "success" ]; then
+          if [ "${{ steps.main_tests.outcome }}" = "success" ] && [ "${{ steps.docker_tests.outcome }}" = "success" ]; then
             TEST_STATUS="success"
           fi
 
