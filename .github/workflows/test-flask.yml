@@ -86,7 +86,6 @@ jobs:
         timeout-minutes: 5
         shell: bash
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
           TARGET_BRANCH: main
         run: |
