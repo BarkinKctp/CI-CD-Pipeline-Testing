@@ -43,15 +43,28 @@ class TestPublish(unittest.TestCase):
 				check=False,
 			)
 
-		self.assertEqual(
-			result.returncode,
-			0,
-			f'git clone failed for {target_repo}. Exit code: {result.returncode}',
-		)
-		self.assertTrue(
-			os.path.isdir(os.path.join(clone_dir, '.git')),
-			'git clone reported success but no .git directory was found.',
-		)
+			self.assertEqual(
+				result.returncode,
+				0,
+				f'git clone failed for {target_repo}. Exit code: {result.returncode}. stderr: {result.stderr.strip()}',
+			)
+
+			verify = subprocess.run(
+				['git', '-C', clone_dir, 'rev-parse', '--is-inside-work-tree'],
+				capture_output=True,
+				text=True,
+				check=False,
+			)
+			self.assertEqual(
+				verify.returncode,
+				0,
+				f'Clone directory is not a valid git work tree. stderr: {verify.stderr.strip()}',
+			)
+			self.assertEqual(
+				verify.stdout.strip(),
+				'true',
+				'git clone succeeded but cloned directory is not recognized as a git work tree.',
+			)
 
 
 if __name__ == '__main__':
