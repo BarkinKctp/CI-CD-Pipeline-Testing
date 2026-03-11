@@ -103,7 +103,35 @@ jobs:
         timeout-minutes: 5
         shell: bash
         env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
           TARGET_BRANCH: main
         run: |
-          echo "Results generated in results/ for this run."
+          set -euo pipefail
+
+          RESULT_FILE="results/test-flask-${GITHUB_RUN_ID}.md"
+          if [ ! -f "$RESULT_FILE" ]; then
+            echo "Result file not found: $RESULT_FILE"
+            exit 1
+          fi
+
+          WORKDIR="$(mktemp -d)"
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPO}.git" "$WORKDIR/target"
+
+          mkdir -p "$WORKDIR/target/results"
+          cp "$RESULT_FILE" "$WORKDIR/target/$RESULT_FILE"
+
+          cd "$WORKDIR/target"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout "$TARGET_BRANCH"
+          git add "$RESULT_FILE"
+
+          if git diff --cached --quiet; then
+            echo "No result changes to push."
+            exit 0
+          fi
+
+          git commit -m "Add test result for run ${GITHUB_RUN_ID}"
+          git push origin "$TARGET_BRANCH"
+          echo "Pushed $RESULT_FILE to ${TARGET_REPO}:${TARGET_BRANCH}"
