@@ -57,6 +57,7 @@ jobs:
   
       - name: Run pytest that triggers docker run
         env:
+          PYTHONPATH: ${{ github.workspace }}
           GH_TOKEN: ${{ steps.app.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
