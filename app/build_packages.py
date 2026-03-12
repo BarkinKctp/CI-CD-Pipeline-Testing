@@ -1,4 +1,3 @@
-import os
 import subprocess
 
 from app.gh_token_platform import build_gh_token_platform

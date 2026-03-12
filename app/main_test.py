@@ -10,5 +10,6 @@ def load_tests(loader, tests, pattern):
     suite.addTests(loader.loadTestsFromModule(publish_test))
     return suite
 
+
 if __name__ == '__main__':
     unittest.main()

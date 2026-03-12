@@ -55,16 +55,8 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
-          EXPECTED_PRIVATE_REPO: BarkinKctp/ghapp-oidc-deploy-test
         run: |
           python -m unittest app/main_test.py
-
-      - name: Validate gh_token parameters before Docker build
-        id: validate_gh_token
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-        run: |
-          python -m unittest app/build_packages_test.py
 
       - name: Build image and run tests in Docker
         id: docker_tests
@@ -105,7 +97,6 @@ jobs:
 
           TEST_STATUS="failure"
           if [ "${{ steps.main_tests.outcome }}" = "success" ] && \
-             [ "${{ steps.validate_gh_token.outcome }}" = "success" ] && \
              [ "${{ steps.docker_tests.outcome }}" = "success" ] && \
              [ "${{ steps.verify_gh_token_docker.outcome }}" = "success" ]; then
             TEST_STATUS="success"

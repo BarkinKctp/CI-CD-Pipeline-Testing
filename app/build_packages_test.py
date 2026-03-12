@@ -8,19 +8,25 @@ from app.build_packages import build_packages
 from app.gh_token_platform import build_gh_token_platform
 
 
+EXAMPLE_TOKEN = 'example-token'
+TARGET_REPO = 'BarkinKctp/ghapp-oidc-deploy-test'
+IMAGE_NAME = 'flask-app-test'
+PLATFORM = 'debian'
+
+
 class TestBuildPackages(unittest.TestCase):
     def test_build_packages_uses_gh_token_platform(self):
         with patch.dict(
             os.environ,
             {
-                'TARGET_REPO': 'BarkinKctp/ghapp-oidc-deploy-test',
-                'IMAGE_NAME': 'flask-app-test',
+                'TARGET_REPO': TARGET_REPO,
+                'IMAGE_NAME': IMAGE_NAME,
             },
             clear=False,
         ):
-            commands = build_packages('example-token', 'debian')
+            commands = build_packages(EXAMPLE_TOKEN, PLATFORM)
 
-        self.assertEqual(commands[0], ['docker', 'build', '-t', 'flask-app-test', '.'])
+        self.assertEqual(commands[0], ['docker', 'build', '-t', IMAGE_NAME, '.'])
         self.assertEqual(
             commands[1],
             [
@@ -28,14 +34,14 @@ class TestBuildPackages(unittest.TestCase):
                 'run',
                 '--rm',
                 '-e',
-                'GH_TOKEN=example-token',
+                f'GH_TOKEN={EXAMPLE_TOKEN}',
                 '-e',
-                'TARGET_REPO=BarkinKctp/ghapp-oidc-deploy-test',
+                f'TARGET_REPO={TARGET_REPO}',
                 '-e',
                 'GITHUB_ACTIONS=true',
                 '-e',
-                'PLATFORM=debian',
-                'flask-app-test',
+                f'PLATFORM={PLATFORM}',
+                IMAGE_NAME,
                 'python',
                 '-m',
                 'unittest',
@@ -55,8 +61,8 @@ class TestBuildPackages(unittest.TestCase):
         with patch.dict(
             os.environ,
             {
-                'GH_TOKEN': 'example-token',
-                'TARGET_REPO': 'BarkinKctp/ghapp-oidc-deploy-test',
+                'GH_TOKEN': EXAMPLE_TOKEN,
+                'TARGET_REPO': TARGET_REPO,
             },
             clear=False,
         ):
@@ -64,7 +70,7 @@ class TestBuildPackages(unittest.TestCase):
 
         self.assertEqual(
             platform['clone_url'],
-            'https://x-access-token:example-token@github.com/BarkinKctp/ghapp-oidc-deploy-test.git',
+            f'https://x-access-token:{EXAMPLE_TOKEN}@github.com/{TARGET_REPO}.git',
         )
 
 if __name__ == '__main__':
