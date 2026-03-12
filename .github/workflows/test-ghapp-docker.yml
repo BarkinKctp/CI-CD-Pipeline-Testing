@@ -54,4 +54,4 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          pytest -q app/tests/test_ghapp_docker.py -s
+          pytest -q app/tests/test_ghapp_docker -s

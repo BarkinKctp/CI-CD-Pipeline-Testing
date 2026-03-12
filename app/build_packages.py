@@ -30,7 +30,7 @@ def build_packages(gh_token, platform):
             'python',
             '-m',
             'unittest',
-            'app/publish_test.py',
+            'app.tests.publish_test',
         ],
     ]
     return commands

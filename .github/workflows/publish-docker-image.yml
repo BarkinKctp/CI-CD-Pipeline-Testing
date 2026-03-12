@@ -2,11 +2,6 @@ name: Publish GH App Test Image
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "docker/ghapp-test-image/**"
 
 jobs:
   publish:

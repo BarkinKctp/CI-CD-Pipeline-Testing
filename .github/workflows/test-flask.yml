@@ -56,7 +56,7 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
         run: |
-          python -m unittest app/main_test.py
+          python -m unittest app.tests.main_test
 
       - name: Build image and run tests in Docker
         id: docker_tests
