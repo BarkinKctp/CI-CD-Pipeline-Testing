@@ -26,7 +26,7 @@ class TestBuildPackages(unittest.TestCase):
         ):
             commands = build_packages(EXAMPLE_TOKEN, PLATFORM)
 
-        self.assertEqual(commands[0], ['docker', 'build', '-t', IMAGE_NAME, '.'])
+        self.assertEqual(commands[0], ['docker', 'build', '-f', 'docker/ghapp-image/Dockerfile', '-t', IMAGE_NAME, '.'])
         self.assertEqual(
             commands[1],
             [

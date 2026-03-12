@@ -13,7 +13,7 @@ def build_packages(gh_token, platform):
     github_actions = context['github_actions']
 
     commands = [
-        ['docker', 'build', '-t', image_name, '.'],
+        ['docker', 'build', '-f', 'docker/ghapp-image/Dockerfile', '-t', image_name, '.'],
         [
             'docker',
             'run',
