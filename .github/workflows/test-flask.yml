@@ -53,9 +53,42 @@ jobs:
       - name: Run main tests
         id: main_tests
         env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
         run: |
           python -m unittest app/main_test.py
+
+      - name: Build image and run tests in Docker
+        id: docker_tests
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
+          PLATFORM: debian
+          IMAGE_NAME: flask-app-test
+        run: |
+          python -m app.build_packages
+
+      - name: Verify gh_token is accessible inside Docker container
+        id: verify_gh_token_docker
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          IMAGE_NAME: flask-app-test
+        run: |
+          PYTHON_SCRIPT=$(cat <<'PY'
+          import os
+          from parameters_validation import non_blank, non_empty
+
+          token = os.environ.get('GH_TOKEN', '')
+          non_empty(non_blank(str))(token, 'gh_token')
+          print('gh_token is accessible and valid inside Docker container')
+          PY
+          )
+
+          docker run --rm \
+            -e GH_TOKEN=${{ steps.app.outputs.token }} \
+            -e GITHUB_ACTIONS=true \
+            "$IMAGE_NAME" \
+            python -c "$PYTHON_SCRIPT"
 
       - name: Write test result file
         if: always()
@@ -63,7 +96,9 @@ jobs:
           mkdir -p results
 
           TEST_STATUS="failure"
-          if [ "${{ steps.main_tests.outcome }}" = "success" ]; then
+          if [ "${{ steps.main_tests.outcome }}" = "success" ] && \
+             [ "${{ steps.docker_tests.outcome }}" = "success" ] && \
+             [ "${{ steps.verify_gh_token_docker.outcome }}" = "success" ]; then
             TEST_STATUS="success"
           fi
 
@@ -88,7 +123,35 @@ jobs:
         timeout-minutes: 5
         shell: bash
         env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
           TARGET_BRANCH: main
         run: |
-          echo "Results generated in results/ for this run."
+          set -euo pipefail
+
+          RESULT_FILE="results/test-flask-${GITHUB_RUN_ID}.md"
+          if [ ! -f "$RESULT_FILE" ]; then
+            echo "Result file not found: $RESULT_FILE"
+            exit 1
+          fi
+
+          WORKDIR="$(mktemp -d)"
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPO}.git" "$WORKDIR/target"
+
+          mkdir -p "$WORKDIR/target/results"
+          cp "$RESULT_FILE" "$WORKDIR/target/$RESULT_FILE"
+
+          cd "$WORKDIR/target"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout "$TARGET_BRANCH"
+          git add "$RESULT_FILE"
+
+          if git diff --cached --quiet; then
+            echo "No result changes to push."
+            exit 0
+          fi
+
+          git commit -m "Add test result for run ${GITHUB_RUN_ID}"
+          git push origin "$TARGET_BRANCH"
+          echo "Pushed $RESULT_FILE to ${TARGET_REPO}:${TARGET_BRANCH}"
