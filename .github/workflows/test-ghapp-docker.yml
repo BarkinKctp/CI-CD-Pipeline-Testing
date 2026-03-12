@@ -48,7 +48,13 @@ jobs:
     #  run: |
     #   echo "GH_TOKEN={{ steps.app.outputs.token }}" >> $GITHUB_ENV
     #  echo "GITHUB_TOKEN={{ steps.app.outputs.token }}" >> $GITHUB_ENV
-
+    
+      - name: Debug repo layout
+        run: |
+              pwd
+              ls -la
+              find app -maxdepth 3 -type f | sort
+  
       - name: Run pytest that triggers docker run
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
