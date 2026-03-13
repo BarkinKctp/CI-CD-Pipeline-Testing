@@ -27,8 +27,9 @@ def build_packages(gh_token, platform):
     target_repo = context['target_repo']
 
     commands = [
-        ['docker', 'build', '-f', 'docker/ghapp-image/Dockerfile', '-t', image_name, '.'],
-        ['docker', 'run', '--rm', '-e', f'GH_TOKEN={gh_token}', '-e', f'TARGET_REPO={target_repo}', '-e', 'GITHUB_ACTIONS=true', '-e', f'PLATFORM={platform}', image_name, 'python', '-m', 'unittest', 'app.tests.publish_test'],
+        ['docker', 'build', '-f', 'docker/local-image/Dockerfile', '-t', image_name, '.'],
+        ['docker', 'run', '--rm', '-e', f'GH_TOKEN={gh_token}', '-e', f'TARGET_REPO={target_repo}', '-e', 'GITHUB_ACTIONS=true', 
+         '-e', f'PLATFORM={platform}', image_name, 'python', '-m', 'unittest', 'app.tests.publish_test'],
     ]
     return commands
 

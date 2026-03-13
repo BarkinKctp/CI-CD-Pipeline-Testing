@@ -20,7 +20,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/ghapp-test-image
+          context: ./docker/dockerhub-image
           push: true
           tags: |
-            cicddocker/ghapp-test:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ghapp-test:latest

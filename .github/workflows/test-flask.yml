@@ -25,13 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
-
-      - name: Validate token (gh / curl / etc.)
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-        run: |
-          gh api repos/${{ github.repository }} --jq '.full_name'
-
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -50,11 +44,21 @@ jobs:
         run: |
           python -m unittest app.tests.main_test
 
+      - name: Build image and run tests in Docker
+        id: docker_tests
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
+          PLATFORM: debian
+          IMAGE_NAME: flask-app-test
+        run: |
+          python -m app.build_packages
+
       - name: Write test result file
         if: always()
         run: |
           mkdir -p results
-          STATUS=$([[ "${{ steps.main_tests.outcome }}" == "success" ]] && echo "success" || echo "failure")
+          STATUS=$([[ "${{ steps.main_tests.outcome }}" == "success" ]] && [[ "${{ steps.docker_tests.outcome }}" == "success" ]] && echo "success" || echo "failure")
           RESULT_FILE="results/test-flask-${GITHUB_RUN_ID}.md"
           printf "# Test Flask Workflow Result\n\n- Status: %s\n- Repository: %s\n- Branch/Ref: %s\n- Run ID: %s\n- Run Number: %s\n- Workflow: %s\n" \
             "$STATUS" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_NUMBER" "$GITHUB_WORKFLOW" > "$RESULT_FILE"

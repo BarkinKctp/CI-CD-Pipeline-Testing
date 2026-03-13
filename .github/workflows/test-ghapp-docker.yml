@@ -17,7 +17,7 @@ jobs:
 
     env:
       TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
-      DOCKER_TEST_IMAGE: cicddocker/ghapp-test:latest
+      DOCKER_TEST_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ghapp-test:latest
 
     steps:
       - name: Create GitHub App token
@@ -47,6 +47,5 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           pytest -q app/tests/docker_test.py -s
