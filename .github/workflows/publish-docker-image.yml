@@ -23,4 +23,4 @@ jobs:
           context: ./docker/dockerhub-image
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/ghapp-test:latest
+           brkndocker/ghapp-test:latest
