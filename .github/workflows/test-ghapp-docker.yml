@@ -17,7 +17,7 @@ jobs:
 
     env:
       TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
-      DOCKER_TEST_IMAGE: brkndocker/ghapp-test:latest
+      DOCKER_TEST_IMAGE: cicddocker/ghapp-test:latest
 
     steps:
       - name: Create GitHub App token
@@ -41,24 +41,12 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
-
-     
-    # - name: Export app token like Citus style
-    #  run: |
-    #   echo "GH_TOKEN={{ steps.app.outputs.token }}" >> $GITHUB_ENV
-    #  echo "GITHUB_TOKEN={{ steps.app.outputs.token }}" >> $GITHUB_ENV
+          pip install -r requirements.txt
     
-      - name: Debug repo layout
-        run: |
-              pwd
-              ls -la
-              find app -maxdepth 3 -type f | sort
-  
       - name: Run pytest that triggers docker run
         env:
           PYTHONPATH: ${{ github.workspace }}
           GH_TOKEN: ${{ steps.app.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          pytest -q app/tests/test_ghapp_docker.py -s
+          pytest -q app/tests/docker_test.py -s

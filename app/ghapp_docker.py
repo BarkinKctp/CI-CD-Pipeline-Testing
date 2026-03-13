@@ -2,10 +2,17 @@ import os
 import subprocess
 from dataclasses import dataclass
 
+from parameters_validation import non_blank, non_empty, validate_parameters
+
 
 @dataclass
 class InputOutputParameters:
     output_dir: str = "artifacts"
+
+    @staticmethod
+    @validate_parameters
+    def build(output_dir: non_empty(non_blank(str)) = "artifacts"):
+        return InputOutputParameters(output_dir=output_dir)
 
 
 def run_with_output(command: str):
@@ -18,25 +25,19 @@ def run_with_output(command: str):
     )
 
 
+@validate_parameters
 def build_package(
-    github_token: str,
-    target_repo: str,
-    docker_image: str,
+    github_token: non_empty(non_blank(str)),
+    target_repo: non_empty(non_blank(str)),
+    docker_image: non_empty(non_blank(str)),
     io_parameters: InputOutputParameters,
 ) -> None:
-    if not github_token or not github_token.strip():
-        raise ValueError("github_token must not be empty")
-
-    if not target_repo or not target_repo.strip():
-        raise ValueError("target_repo must not be empty")
-
-    os.environ["GITHUB_TOKEN"] = github_token
-
+    os.environ["GH_TOKEN"] = github_token
     os.makedirs(io_parameters.output_dir, exist_ok=True)
 
     docker_command = (
         f'docker run --rm '
-        f'-e GITHUB_TOKEN '
+        f'-e GH_TOKEN '
         f'-e TARGET_REPO="{target_repo}" '
         f'-v "{os.path.abspath(io_parameters.output_dir)}:/artifacts" '
         f'{docker_image}'
@@ -52,10 +53,11 @@ def build_package(
         raise ValueError(result.stderr or result.stdout or "docker run failed")
 
 
+@validate_parameters
 def build_packages(
-    github_token: str,
-    target_repo: str,
-    docker_image: str,
+    github_token: non_empty(non_blank(str)),
+    target_repo: non_empty(non_blank(str)),
+    docker_image: non_empty(non_blank(str)),
     io_parameters: InputOutputParameters,
 ) -> None:
     build_package(

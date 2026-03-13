@@ -2,3 +2,4 @@ flask
 python-dotenv
 gunicorn
 parameters-validation
+pytest

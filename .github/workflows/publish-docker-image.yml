@@ -23,4 +23,4 @@ jobs:
           context: ./docker/ghapp-test-image
           push: true
           tags: |
-            brkndocker/ghapp-test:latest
+            cicddocker/ghapp-test:latest

@@ -8,16 +8,7 @@ def test_build_packages():
     target_repo = os.getenv("TARGET_REPO")
     docker_image = os.getenv("DOCKER_TEST_IMAGE")
 
-    if not gh_token:
-        raise ValueError("GH_TOKEN is missing")
-
-    if not target_repo:
-        raise ValueError("TARGET_REPO is missing")
-
-    if not docker_image:
-        raise ValueError("DOCKER_TEST_IMAGE is missing")
-
-    io_parameters = InputOutputParameters(output_dir="artifacts")
+    io_parameters = InputOutputParameters.build(output_dir="artifacts")
 
     build_packages(
         github_token=gh_token,
