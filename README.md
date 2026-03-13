@@ -7,6 +7,7 @@
 Simple Flask project for practicing and validating CI/CD workflows.
 
 ## Table of Contents
+
 - [General overview](#general-overview)
 - [Local run](#local-run)
 - [Azure setup](#azure-setup)
@@ -19,26 +20,33 @@ Simple Flask project for practicing and validating CI/CD workflows.
 - [Additional documentation](#additional-documentation)
 
 ## General overview
+
 - Practice secure OIDC-based Azure deployments
 - Avoid publishing long-lived credentials
 - Validate ARM-based infrastructure automation
 - Create a reusable CI/CD template for future projects
+- Includes Docker checks in CI: Local image build test / DockerHub published-image test
 
 ![Flask App UI](docs/images/flask-app-example.png)
 
 ---
 
 ## Local run
+
 - Create venv: `python -m venv .venv`
 - Activate venv: `\.venv\Scripts\Activate.ps1`
 - Install deps: `pip install -r requirements.txt`
 
 ## Azure setup
+
 ### Getting started
-**Prerequisites:**	
+
+**Prerequisites:**
+
 - Install Azure CLI (`az`) locally.
 
 Quick commands:
+
 ```bash
 # Login
 az login
@@ -47,18 +55,31 @@ az account list --output table
 # Set the subscription you want to deploy to
 az account set --subscription <your-subscription-id>
 ```
+
 ## GitHub secrets (required)
+
 Create GitHub secrets:
-- `AZURE_CLIENT_ID` 
+
+- `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
 
+For GitHub App authentication and Docker workflows, also set:
+
+- `GH_APP_KEY`
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
 **Important:**
+
 - `AZURE_CLIENT_ID` should be the **client ID of the identity used for OIDC authentication** (managed identity or App Registration).
 - `AZURE_TENANT_ID` must match that **identity tenant**.
 - `AZURE_SUBSCRIPTION_ID` must be the **target subscription**.
 
----
+**DockerHub secret notes:**
+
+- `DOCKERHUB_USERNAME` must be only the Docker Hub account name (example: `brkndocker`).
+- `DOCKERHUB_TOKEN` should be a Docker Hub access token with permission to push images.
 
 ### Identity options for OIDC authentication
 
@@ -67,6 +88,7 @@ In this repository the ARM template provisions a **system-assigned managed ident
 Alternatively, an **Azure App Registration (Service Principal)** can be used for CI/CD authentication.
 
 In general:
+
 - **App Registration** is typically preferred for **CI/CD pipelines**, since it represents an external workload (e.g., GitHub Actions) authenticating to Azure using OIDC.
 - **Managed Identity** is commonly used by **Azure resources themselves** (VMs, App Service, Functions) to securely access other Azure services such as Key Vault, Storage, or databases.
 
@@ -77,6 +99,7 @@ See the additional documentation for a step-by-step guide on configuring App Reg
 ## Azure template deployment
 
 ### General info
+
 - Scripts prompt for `WEBAPP_NAME`, `LOCATION`, `GITHUB_ORGANIZATION_NAME`, and `RESOURCE_GROUP`.
 - Defaults come from `azuredeploy.parameters.json`.
 - Customize values such as `webAppName`, `location`, `githubOrganizationName`, SKU settings, and `tags` in the parameters file.
@@ -86,6 +109,7 @@ See the additional documentation for a step-by-step guide on configuring App Reg
 - Deployment provisions App Service and identity resources from `azuredeploy.json`.
 
 ### Setup steps for PowerShell and Bash
+
 Follow these steps on your local machine:
 
 ```bash
@@ -93,13 +117,15 @@ Follow these steps on your local machine:
 az login
 az account set --subscription <your-subscription-id>
 ```
+
 ---
 
 PowerShell (Windows):
+
 ```powershell
 
 # Go to the azure directory to have access to the scripts
-cd azure 
+cd azure
 
 $env:WEBAPP_NAME="your-webapp-name"
 $env:LOCATION="canadacentral"
@@ -109,16 +135,18 @@ $env:RESOURCE_GROUP="your-rg-name"
 # Run Script File
 ./deploy-webapp-powershell.ps1
 
-#Force prompt without persisting new values: 
+#Force prompt without persisting new values:
 ./deploy-webapp-powershell.ps1 -NoCache
 
 # Clear cached prompt values:
 ./deploy-webapp-powershell.ps1 -ClearCache
 
 ```
+
 ---
 
 Bash:
+
 ```bash
 
 # Go to the azure directory to have access to the scripts
@@ -132,13 +160,14 @@ export RESOURCE_GROUP=your-rg-name
 # Run Script File
 bash ./deploy-webapp-bash.sh
 
-# Force prompt and ignore shell-cached values: 
+# Force prompt and ignore shell-cached values:
 bash ./deploy-webapp-bash.sh --no-cache
 
 # Clear cached prompt values:
 bash ./deploy-webapp-bash.sh --clear-cache
 
 ```
+
 ---
 
 ```bash
@@ -151,6 +180,7 @@ az deployment group create \
 ```
 
 ### Resources created
+
 - Linux App Service Plan (B1)
 - Linux Python Web App (Python 3.12)
 - System-assigned managed identity
@@ -158,6 +188,7 @@ az deployment group create \
 - Tags including `repo=<repository-name>`
 
 ## VS Code manual deploy
+
 - Install Azure App Service extension
 - Sign in and select your Web App
 - Right-click project folder -> **Deploy to Web App...**
@@ -168,6 +199,7 @@ az deployment group create \
 ---
 
 ## Deployment Flow
+
 > Main workflow deploys to an existing Azure Web App. It does not create one.
 
 ```mermaid
@@ -180,6 +212,7 @@ flowchart LR
 ```
 
 ### Workflow and inputs
+
 - Main deploy workflow: `.github/workflows/build-flask-wapp.yml`
 - Optional dispatch inputs: `webapp_name`, `resource_group`, `tag_key` (default `repo`), `tag_value`
 - Resolution order:
@@ -188,6 +221,7 @@ flowchart LR
   3. tag lookup (`tag_key` + `tag_value` or repo-name default)
 
 ### Build and deploy behavior
+
 1. Upload artifact with `app/` and `requirements.txt`
 2. Download to `deploy_pkg`, validate required files
 3. Zip as `deploy.zip`
@@ -196,15 +230,17 @@ flowchart LR
 6. On success: set startup command and restart app
 
 - Startup command used:
-`gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
+  `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ## Notes
+
 - Prefer manual `workflow_dispatch` when validating Azure changes.
 - Set subscription once per shell and verify with `az account show`.
 - App Service names are globally unique.
 - **Security:** GitHub OIDC only (no long-lived Azure secrets), least-privilege RBAC, and isolated Web App identity.
 
 ## Troubleshooting
+
 - **No web app resolved:** provide `WEBAPP_NAME` variable, `webapp_name` on workflow run, or matching tag on the web app.
 - `AuthorizationFailed`: grant at least Reader on the target Web App/Resource Group.
 - **OIDC mismatch:** ensure federated credential subject matches repo/branch/ref.
@@ -220,8 +256,7 @@ Detailed guides related to this CI/CD setup:
   Step-by-step configuration for Azure OIDC authentication using flexible federated credentials.
 
 - [GitHub App Authentication Example](docs/github-app-example.md)  
-  Overview of GitHub App authentication in GitHub Actions, explaining how it differs from PATs and enables secure cross-repository automation.
-   
+  Overview of GitHub App authentication in GitHub Actions, explaining how it differs from PATs, how App tokens differ from the auto-generated `GITHUB_TOKEN`, and how to safely use both for secure cross-repository automation.
 
 ### References
 
