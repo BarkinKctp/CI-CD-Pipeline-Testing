@@ -1,5 +1,11 @@
 name: Testing pgbench branch prefix
 
+env:
+  DEPLOY_PKG_DIR: deploy_pkg
+  DEPLOY_ZIP: deploy.zip
+  WAIT_SECONDS: "20"
+  STARTUP_FILE: "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"
+
 on:
   workflow_dispatch:
     inputs:
@@ -74,13 +80,7 @@ jobs:
           path: deploy_pkg
 
       - name: Debug deployment payload
-        run: |
-          echo "PWD=$(pwd)"
-          ls -la deploy_pkg
-          echo "---- app dir ----"
-          ls -la deploy_pkg/app || echo "NO app/ folder"
-          echo "---- find main.py ----"
-          find deploy_pkg -maxdepth 3 -name "main.py" -print
+        run: bash scripts/azure-webapp-workflow.sh debug_payload
 
       - name: Azure login
         uses: azure/login@v2
@@ -91,86 +91,21 @@ jobs:
 
       - name: Resolve web app name
         id: resolveapp
-        run: |
-          REPO_APP_NAME="${{ vars.WEBAPP_NAME || '' }}"
-          TAG_KEY="repo"
-          TAG_VALUE="${GITHUB_REPOSITORY#*/}"
-
-          if [ -n "$REPO_APP_NAME" ]; then
-            RESOLVED_APP_NAME="$REPO_APP_NAME"
-            echo "Using repository variable WEBAPP_NAME: $RESOLVED_APP_NAME"
-          else
-            QUERY="[?tags.${TAG_KEY}=='${TAG_VALUE}'].name | [0]"
-            RESOLVED_APP_NAME=$(az webapp list --query "$QUERY" -o tsv)
-            if [ -n "$RESOLVED_APP_NAME" ]; then
-              echo "Using web app found by tag $TAG_KEY=$TAG_VALUE: $RESOLVED_APP_NAME"
-            fi
-          fi
-
-          if [ -z "$RESOLVED_APP_NAME" ]; then
-            echo "No web app name resolved. Provide workflow_dispatch input webapp_name, set repository variable WEBAPP_NAME, or tag a web app with $TAG_KEY=$TAG_VALUE." >&2
-            exit 1
-          fi
-
-          echo "app_name=$RESOLVED_APP_NAME" >> $GITHUB_OUTPUT
+        env:
+          REPO_APP_NAME: ${{ vars.WEBAPP_NAME || '' }}
+          INPUT_TAG_KEY: repo
+          DEFAULT_TAG_VALUE: ${{ github.event.repository.name }}
+        run: bash scripts/azure-webapp-workflow.sh resolve_app_name
 
       - name: Preflight Azure target validation
         id: preflight
-        run: |
-          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
-          INPUT_RESOURCE_GROUP="${{ github.event.inputs.resource_group || '' }}"
-          ACTIVE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+        env:
+          APP_NAME: ${{ steps.resolveapp.outputs.app_name }}
+          INPUT_RESOURCE_GROUP: ${{ github.event.inputs.resource_group || '' }}
+        run: bash scripts/azure-webapp-workflow.sh preflight_validate
 
-          echo "Azure subscription in workflow context: $ACTIVE_SUBSCRIPTION_ID"
-          echo "Input resource group: $INPUT_RESOURCE_GROUP"
-
-          if [ -z "$INPUT_RESOURCE_GROUP" ]; then
-            REQUIRED_RESOURCE_GROUP="${APP_NAME}-rg"
-            echo "No resource_group input provided. Defaulting to: $REQUIRED_RESOURCE_GROUP"
-          else
-            REQUIRED_RESOURCE_GROUP="$INPUT_RESOURCE_GROUP"
-            echo "Using provided resource_group: $REQUIRED_RESOURCE_GROUP"
-          fi
-
-          WEBAPP_SHOW_OUTPUT=$(az webapp show --name "$APP_NAME" --resource-group "$REQUIRED_RESOURCE_GROUP" --query name -o tsv 2>&1) || WEBAPP_SHOW_EXIT=$?
-          WEBAPP_SHOW_EXIT=${WEBAPP_SHOW_EXIT:-0}
-
-          if [ "$WEBAPP_SHOW_EXIT" -ne 0 ]; then
-            if echo "$WEBAPP_SHOW_OUTPUT" | grep -Eiq "AuthorizationFailed|does not have authorization"; then
-              echo "::error::Azure identity does not have permission to read web app '$APP_NAME' in resource group '$REQUIRED_RESOURCE_GROUP'."
-              echo "::error::Grant at least Reader on the target resource group (or Web App), then rerun."
-              echo "::error::Identity object id is shown in the Azure CLI error above."
-              exit 1
-            fi
-
-            echo "::error::Web app '$APP_NAME' was not found in resource group '$REQUIRED_RESOURCE_GROUP' under subscription '$ACTIVE_SUBSCRIPTION_ID'."
-            echo "::error::If your ARM deployment used a different RG name, provide workflow_dispatch input resource_group explicitly."
-            echo "::error::Also verify AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, and AZURE_CLIENT_ID."
-            exit 1
-          fi
-
-          echo "Resolved resource group: $REQUIRED_RESOURCE_GROUP"
-          echo "resource_group=$REQUIRED_RESOURCE_GROUP" >> $GITHUB_OUTPUT
-
-      - name: Verify deploy package exists
-        run: |
-          if [ -d "./deploy_pkg/app" ] && [ -f "./deploy_pkg/requirements.txt" ]; then
-            echo "Deploy package verified: app/ directory and requirements.txt found."
-          else
-            echo "::error::Deploy package is missing required files. Ensure app/ directory and requirements.txt are included in the artifact."
-            exit 1
-          fi
-          ls -la ./deploy_pkg
-
-      - name: Create deploy zip
-        run: |
-          cd deploy_pkg
-          zip -r ../deploy.zip .
-          cd ..
-          echo "Zip created:"
-          ls -lh deploy.zip
-          echo "Zip contents (top):"
-          unzip -l deploy.zip | head -n 60
+      - name: Verify package and create deploy zip
+        run: bash scripts/azure-webapp-workflow.sh package_deploy
 
       - name: Deploy to Azure Web App (attempt 1)
         id: deploy_to_webapp_attempt_1
@@ -184,15 +119,10 @@ jobs:
 
       - name: Restart app + wait before retry
         if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
-        run: |
-          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
-          RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
-
-          echo "Attempt 1 failed. Restarting $APP_NAME before retry..."
-          az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" || true
-
-          echo "Waiting 20s before retry..."
-          sleep 20
+        env:
+          APP_NAME: ${{ steps.resolveapp.outputs.app_name }}
+          RESOURCE_GROUP: ${{ steps.preflight.outputs.resource_group }}
+        run: bash scripts/azure-webapp-workflow.sh restart_before_retry
 
       - name: Deploy to Azure Web App (attempt 2)
         id: deploy_to_webapp_attempt_2
@@ -207,16 +137,10 @@ jobs:
 
       - name: Configure startup command (Gunicorn) + restart
         if: steps.deploy_to_webapp_attempt_1.outcome == 'success' || steps.deploy_to_webapp_attempt_2.outcome == 'success'
-        run: |
-          APP_NAME="${{ steps.resolveapp.outputs.app_name }}"
-          RESOURCE_GROUP="${{ steps.preflight.outputs.resource_group }}"
-
-          az webapp config set \
-            --name "$APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app.main:app"
-
-          az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP"
+        env:
+          APP_NAME: ${{ steps.resolveapp.outputs.app_name }}
+          RESOURCE_GROUP: ${{ steps.preflight.outputs.resource_group }}
+        run: bash scripts/azure-webapp-workflow.sh configure_startup
 
       - name: Fail if deployment did not succeed
         if: steps.deploy_to_webapp_attempt_1.outcome == 'failure' && steps.deploy_to_webapp_attempt_2.outcome == 'failure'

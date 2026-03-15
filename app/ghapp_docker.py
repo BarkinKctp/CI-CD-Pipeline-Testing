@@ -26,7 +26,7 @@ def run_with_output(command: str):
 
 
 @validate_parameters
-def build_package(
+def build_packages(
     github_token: non_empty(non_blank(str)),
     target_repo: non_empty(non_blank(str)),
     docker_image: non_empty(non_blank(str)),
@@ -51,18 +51,3 @@ def build_package(
 
     if result.returncode != 0:
         raise ValueError(result.stderr or result.stdout or "docker run failed")
-
-
-@validate_parameters
-def build_packages(
-    github_token: non_empty(non_blank(str)),
-    target_repo: non_empty(non_blank(str)),
-    docker_image: non_empty(non_blank(str)),
-    io_parameters: InputOutputParameters,
-) -> None:
-    build_package(
-        github_token=github_token,
-        target_repo=target_repo,
-        docker_image=docker_image,
-        io_parameters=io_parameters,
-    )

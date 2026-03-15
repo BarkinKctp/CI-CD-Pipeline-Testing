@@ -1,4 +1,7 @@
-name: Test Flask App
+name: GitHub App Docker Flow Test (Local Dockerfile)
+
+env:
+  TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
 
 on:
   workflow_dispatch:
@@ -26,79 +29,28 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
           
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - name: Install python requirements
+        run:  python -m pip install -r requirements.txt
 
       - name: Run main tests
         id: main_tests
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
-        run: |
-          python -m unittest app.tests.main_test
+        run: python -m unittest app.tests.main_test
 
       - name: Build image and run tests in Docker
         id: docker_tests
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
           PLATFORM: debian
           IMAGE_NAME: flask-app-test
-        run: |
-          python -m app.build_packages
+        run: python -m app.build_packages
 
-      - name: Write test result file
-        if: always()
-        run: |
-          mkdir -p results
-          STATUS=$([[ "${{ steps.main_tests.outcome }}" == "success" ]] && [[ "${{ steps.docker_tests.outcome }}" == "success" ]] && echo "success" || echo "failure")
-          RESULT_FILE="results/test-flask-${GITHUB_RUN_ID}.md"
-          printf "# Test Flask Workflow Result\n\n- Status: %s\n- Repository: %s\n- Branch/Ref: %s\n- Run ID: %s\n- Run Number: %s\n- Workflow: %s\n" \
-            "$STATUS" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_NUMBER" "$GITHUB_WORKFLOW" > "$RESULT_FILE"
-          echo "Wrote test result to $RESULT_FILE"
-
-      - name: Push results to private repo
-        if: always() && github.event_name != 'pull_request'
-        continue-on-error: true
-        timeout-minutes: 5
-        shell: bash
+      - name: Write and push test result file
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          TARGET_REPO: BarkinKctp/ghapp-oidc-deploy-test
           TARGET_BRANCH: main
-        run: |
-          set -euo pipefail
-
-          RESULT_FILE="results/test-flask-${GITHUB_RUN_ID}.md"
-          if [ ! -f "$RESULT_FILE" ]; then
-            echo "Result file not found: $RESULT_FILE"
-            exit 1
-          fi
-
-          WORKDIR="$(mktemp -d)"
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPO}.git" "$WORKDIR/target"
-
-          mkdir -p "$WORKDIR/target/results"
-          cp "$RESULT_FILE" "$WORKDIR/target/$RESULT_FILE"
-
-          cd "$WORKDIR/target"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout "$TARGET_BRANCH"
-          git add "$RESULT_FILE"
-
-          if git diff --cached --quiet; then
-            echo "No result changes to push."
-            exit 0
-          fi
-
-          git commit -m "Add test result for run ${GITHUB_RUN_ID}"
-          git push origin "$TARGET_BRANCH"
-          echo "Pushed $RESULT_FILE to ${TARGET_REPO}:${TARGET_BRANCH}"
+          MAIN_TEST_OUTCOME: ${{ steps.main_tests.outcome }}
+          DOCKER_TEST_OUTCOME: ${{ steps.docker_tests.outcome }}
+        run: bash scripts/push-results.sh
+          
