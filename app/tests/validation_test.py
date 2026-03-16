@@ -13,7 +13,6 @@ def test_gh_token_can_clone_target_repo():
     try:
         env_vars = validate_required_env(['GH_TOKEN', 'TARGET_REPO'])
         target_repo = env_vars['TARGET_REPO']
-        gh_token = env_vars['GH_TOKEN']
     except ValidationError as e:
         pytest.fail(f'Validation failed: {str(e)}')
 

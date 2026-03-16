@@ -46,16 +46,16 @@ def build_packages(
 
 def push_test_results(target_repo: str, target_branch: str) -> None:
     """Push test results to target repository."""
-    github_event = os.getenv('GITHUB_EVENT_NAME', '')
+    github_event = os.environ.get('GITHUB_EVENT_NAME', '')
     if github_event == 'pull_request':
         logger.info('Pull request event detected. Skipping push to target repo.')
         return
 
-    github_run_id = os.getenv('GITHUB_RUN_ID', 'unknown')
-    github_run_number = os.getenv('GITHUB_RUN_NUMBER', 'unknown')
-    github_workflow = os.getenv('GITHUB_WORKFLOW', 'unknown')
-    github_repository = os.getenv('GITHUB_REPOSITORY', 'unknown')
-    github_ref = os.getenv('GITHUB_REF', 'unknown')
+    github_run_id = os.environ.get('GITHUB_RUN_ID', 'unknown')
+    github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'unknown')
+    github_workflow = os.environ.get('GITHUB_WORKFLOW', 'unknown')
+    github_repository = os.environ.get('GITHUB_REPOSITORY', 'unknown')
+    github_ref = os.environ.get('GITHUB_REF', 'unknown')
     
     os.makedirs('results', exist_ok=True)
     result_file = f'results/test-flask-{github_run_id}.md'
