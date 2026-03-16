@@ -27,7 +27,7 @@ jobs:
       - name: Set GH_TOKEN for all steps # Experimental to enable authenticated git operations in subsequent steps using GH_TOKEN
         run: echo "GH_TOKEN=${{ steps.app.outputs.token }}" >> $GITHUB_ENV
 
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
@@ -39,20 +39,9 @@ jobs:
         run: |
           python -m pip install -r requirements.txt
 
-      - name: Run Flask app tests (build local image and test)
-        id: build_tests
+      - name: Build local image, run tests, and push results
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m app.build_local_packages
-
-      - name: Run validation tests in Docker
-        id: docker_tests
-        run: docker run --rm -v ${{ github.workspace }}:/app flask-app-test pytest -q app/tests/validation_test.py
-
-      - name: Write and push test result file
-        env:
           TARGET_BRANCH: main
-          BUILD_TEST_OUTCOME: ${{ steps.build_tests.outcome }}
-          DOCKER_TEST_OUTCOME: ${{ steps.docker_tests.outcome }}
-        run: bash scripts/push-results.sh
+        run: python -m app.build_local_packages
           

@@ -17,6 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build and push image
-        run: bash scripts/push-ghapp-image.sh
+      - name: Install python requirements
+        run: python -m pip install -r requirements.txt
+
+      - name: Build and push Docker image
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m app.build_dockerhub_packages
         

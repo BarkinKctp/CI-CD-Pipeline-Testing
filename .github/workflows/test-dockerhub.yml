@@ -37,19 +37,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
-          submodules: true
       
       - name: Configure git authentication # Experimental step to enable pushing to target repo using GH App token
         run: git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
       - name: Install python requirements
         run: python -m pip install -r requirements.txt
-    
-      - name: Run pytest that triggers docker run
+
+      - name: Build, test, and push Docker image (if tests pass)
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: pytest -q app/tests/docker_test.py -s
-
-      - name: Build and push image (main only)
-        if: ${{ github.ref == 'refs/heads/main' }}
-        run: bash scripts/push-ghapp-image.sh
+        run: python -m app.build_dockerhub_packages

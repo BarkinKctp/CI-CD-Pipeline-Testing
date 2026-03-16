@@ -29,6 +29,6 @@ def test_build_local_packages():
     build_packages(
         github_token=gh_token,
         target_repo=target_repo,
-        image_name="flask-app-test",
+        docker_image="flask-app-test",
         io_parameters=io_parameters,
     )

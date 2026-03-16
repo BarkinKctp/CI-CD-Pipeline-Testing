@@ -47,10 +47,6 @@ def get_required_env(var_names: List[str], strip: bool = True) -> Dict[str, str]
     return result
 
 
-def get_optional_env(name: str, default: str = '', strip: bool = True) -> str:
-    value = os.getenv(name, default)
-    return value.strip() if strip else value
-
 
 def validate_required_env(required_vars: list):
     return get_required_env(required_vars, strip=True)

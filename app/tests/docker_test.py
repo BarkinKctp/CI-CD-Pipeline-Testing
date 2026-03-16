@@ -1,6 +1,6 @@
 import subprocess
 
-from app.build_dockerhub_packages import InputOutputParameters, build_packages
+from app.build_dockerhub_packages import InputOutputParameters, test_image
 from app.validation import get_required_env, ValidationError, format_env_error
 
 
@@ -32,7 +32,7 @@ def test_build_packages():
     io_parameters = InputOutputParameters.build(output_dir="artifacts")
 
     # This runs the image with entrypoint.sh, which performs git clone inside container
-    build_packages(
+    test_image(
         github_token=gh_token,
         target_repo=target_repo,
         docker_image=docker_image,
