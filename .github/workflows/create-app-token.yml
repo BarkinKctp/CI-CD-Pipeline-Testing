@@ -2,11 +2,10 @@ name: Create Github App Token For Other Workflows
 
 on:
   workflow_call:
-    permissions:
-      contents: write
-      packages: write
-      secrets: read
 
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   create-token:
