@@ -2,10 +2,16 @@ name: Create Github App Token For Other Workflows
 
 on:
   workflow_call:
+    outputs:
+      token:
+        description: 'GitHub App Token'
+        value: ${{ jobs.create-token.outputs.token }}
 
 jobs:
   create-token:
     runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.app.outputs.token }}
 
     steps:
       - name: Create GitHub App token
