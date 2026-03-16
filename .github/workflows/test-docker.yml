@@ -24,10 +24,16 @@ jobs:
           private-key: ${{ secrets.GH_APP_KEY }}
           owner: ${{ github.repository_owner }}
 
+      - name: Set GH_TOKEN for all steps
+        run: echo "GH_TOKEN=${{ steps.app.outputs.token }}" >> $GITHUB_ENV
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
+
+      - name: Configure git with x-access-token
+        run: git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Python and install dependencies
         run: |
@@ -35,7 +41,6 @@ jobs:
 
       - name: Build local image, run tests, and push results
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
           PYTHONPATH: ${{ github.workspace }}
           TARGET_BRANCH: main
         run: python -m app.build_local_packages

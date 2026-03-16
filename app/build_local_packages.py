@@ -73,11 +73,9 @@ def push_test_results(target_repo: str, target_branch: str) -> None:
     
     logger.info(f'Wrote test result to {result_file}')
     
-    github_token = os.getenv('GH_TOKEN', '')
     with tempfile.TemporaryDirectory() as workdir:
         target_path = os.path.join(workdir, 'target')
-        # Use x-access-token as username for GitHub token authentication
-        run_command(['git', 'clone', f'https://x-access-token:{github_token}@github.com/{target_repo}.git', target_path], 
+        run_command(['git', 'clone', f'https://github.com/{target_repo}.git', target_path], 
                    shell=False, capture_output=True)
         
         os.makedirs(os.path.join(target_path, 'results'), exist_ok=True)
@@ -117,12 +115,12 @@ def run_build_packages():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    github_token = os.getenv('GH_TOKEN', '')
-    target_repo = os.getenv('TARGET_REPO', '')
-    target_branch = os.getenv('TARGET_BRANCH', 'main')
-    docker_image = os.getenv('DOCKER_IMAGE', 'flask-app-test')
+    validate_required_env(['GH_TOKEN', 'TARGET_REPO'])
     
-    validate_required_env(['GH_TOKEN', 'TARGET_REPO'])  
+    github_token = os.environ['GH_TOKEN']
+    target_repo = os.environ['TARGET_REPO']
+    target_branch = os.environ.get('TARGET_BRANCH', 'main')
+    docker_image = os.environ.get('DOCKER_IMAGE', 'flask-app-test')
     
     io_parameters = InputOutputParameters.build(output_dir="artifacts")
     build_packages(github_token, target_repo, docker_image, io_parameters)

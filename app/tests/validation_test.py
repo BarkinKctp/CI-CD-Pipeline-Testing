@@ -17,7 +17,7 @@ def test_gh_token_can_clone_target_repo():
     except ValidationError as e:
         pytest.fail(f'Validation failed: {str(e)}')
 
-    repo_url = f'https://x-access-token:{gh_token}@github.com/{target_repo}.git'
+    repo_url = f'https://github.com/{target_repo}.git'
 
     with tempfile.TemporaryDirectory() as temp_dir:
         clone_dir = os.path.join(temp_dir, 'repo-under-test')
