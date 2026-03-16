@@ -44,7 +44,7 @@ def test_image(
     os.makedirs(io_parameters.output_dir, exist_ok=True)
 
     logger.info(f"Testing image: {docker_image}")
-    run_command(['docker', 'run', '--rm', '-e', 'GH_TOKEN', 
+    run_command(['docker', 'run', '--rm', '-e', f'GH_TOKEN={github_token}', 
                 '-e', f'TARGET_REPO={target_repo}',
                 '-e', 'GITHUB_ACTIONS=true',
                 docker_image, 'pytest', '-q', 'app/tests/app_test.py'],
