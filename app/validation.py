@@ -55,7 +55,7 @@ def validate_required_env(required_vars: list):
 
 
 
-def run_command(command, shell=False, capture_output=True, env=None):
+def run_command(command, shell=False, capture_output=True):
     try:
         result = subprocess.run(
             command,
