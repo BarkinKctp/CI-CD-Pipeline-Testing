@@ -23,16 +23,15 @@ jobs:
           app-id: ${{ vars.GH_APPLICATION_ID }}
           private-key: ${{ secrets.GH_APP_KEY }}
           owner: ${{ github.repository_owner }}
-      
-      - name: Set GH_TOKEN for all steps # Experimental to enable authenticated git operations in subsequent steps using GH_TOKEN
-        run: echo "GH_TOKEN=${{ steps.app.outputs.token }}" >> $GITHUB_ENV
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
       
-      - name: Configure git authentication # Experimental, to enable authenticated git operations in subsequent steps using GH_TOKEN
+      - name: Configure git authentication
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Python and install dependencies
@@ -41,6 +40,7 @@ jobs:
 
       - name: Build local image, run tests, and push results
         env:
+          GH_TOKEN: ${{steps.app.outputs.token}}
           PYTHONPATH: ${{ github.workspace }}
           TARGET_BRANCH: main
         run: python -m app.build_local_packages
