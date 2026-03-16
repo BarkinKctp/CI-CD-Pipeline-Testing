@@ -24,9 +24,6 @@ jobs:
           private-key: ${{ secrets.GH_APP_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - name: Set GH_TOKEN for all steps
-        run: echo "GH_TOKEN=${{ steps.app.outputs.token }}" >> $GITHUB_ENV
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
