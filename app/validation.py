@@ -55,7 +55,7 @@ def validate_required_env(required_vars: list):
 
 
 
-def run_command(command, shell=False, capture_output=True):
+def run_command(command, shell=False, capture_output=True, env=None):
     try:
         result = subprocess.run(
             command,
@@ -63,7 +63,8 @@ def run_command(command, shell=False, capture_output=True):
             text=True,
             stdout=subprocess.PIPE if capture_output else None,
             stderr=subprocess.PIPE if capture_output else None,
-            check=True
+            check=True,
+            env=env
         )
         return result
     except subprocess.CalledProcessError as e:

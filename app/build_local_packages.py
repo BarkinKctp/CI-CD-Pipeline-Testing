@@ -76,8 +76,11 @@ def push_test_results(target_repo: str, target_branch: str) -> None:
     github_token = os.getenv('GH_TOKEN', '')
     with tempfile.TemporaryDirectory() as workdir:
         target_path = os.path.join(workdir, 'target')
+        # Set GIT_TERMINAL_PROMPT=0 to prevent interactive password prompt in non-interactive environments
+        clone_env = os.environ.copy()
+        clone_env['GIT_TERMINAL_PROMPT'] = '0'
         run_command(['git', 'clone', f'https://{github_token}@github.com/{target_repo}.git', target_path], 
-                   shell=False, capture_output=True)
+                   shell=False, capture_output=True, env=clone_env)
         
         os.makedirs(os.path.join(target_path, 'results'), exist_ok=True)
         
