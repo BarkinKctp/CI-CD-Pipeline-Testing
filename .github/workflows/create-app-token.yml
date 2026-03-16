@@ -1,0 +1,33 @@
+name: Create Github App Token For Other Workflows
+
+on:
+  workflow_call:
+    permissions:
+      contents: write
+      packages: write
+      secrets: read
+
+
+jobs:
+  create-token:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.GH_APPLICATION_ID }}
+          private-key: ${{ secrets.GH_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Set GH_TOKEN for all steps
+        run: echo "GH_TOKEN=${{ steps.app.outputs.token }}" >> $GITHUB_ENV
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Configure git with x-access-token
+        run: git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
