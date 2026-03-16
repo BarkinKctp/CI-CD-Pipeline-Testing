@@ -6,14 +6,15 @@ IFS=$'\n\t'
 : "${DOCKERHUB_TOKEN:?DOCKERHUB_TOKEN is required}"
 : "${DOCKER_TEST_IMAGE:?DOCKER_TEST_IMAGE is required}"
 
-BUILD_CONTEXT="${BUILD_CONTEXT:-docker/dockerhub-image}"
+BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
+DOCKERFILE_PATH="${DOCKERFILE_PATH:-docker/dockerhub-image/Dockerfile}"
 SHA_IMAGE_TAG="${SHA_IMAGE_TAG:-}"
 
 echo "Logging in to Docker Hub..."
 echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
 
 echo "Building image: ${DOCKER_TEST_IMAGE}"
-docker build -t "${DOCKER_TEST_IMAGE}" "${BUILD_CONTEXT}"
+docker build -f "${DOCKERFILE_PATH}" -t "${DOCKER_TEST_IMAGE}" "${BUILD_CONTEXT}"
 
 echo "Pushing image: ${DOCKER_TEST_IMAGE}"
 docker push "${DOCKER_TEST_IMAGE}"

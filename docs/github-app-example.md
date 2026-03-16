@@ -95,16 +95,16 @@ GitHub Apps can support **secure cross-repository automation** without relying o
 ## Dockerfiles in this repo
 
 - `docker/local-image/Dockerfile` builds a local Python test image (installs app dependencies and copies `app/`).
-  It is used by `.github/workflows/test-flask.yml` via `python -m app.build_packages`.
+  It is used by `.github/workflows/test-docker.yml` to build and test the local Docker image with GitHub App token authentication.
 
-- `docker/dockerhub-image/Dockerfile` builds the published DockerHub test image (uses an `entrypoint.sh` clone flow inside the container).
-  It is built and pushed by `.github/workflows/publish-docker-image.yml`, then pulled and tested by `.github/workflows/test-ghapp-docker.yml`.
+- `docker/dockerhub-image/Dockerfile` builds the published DockerHub test image (uses an `entrypoint.sh` for in-container git clone with retry logic).
+  It is built and pushed by `.github/workflows/publish-docker-image.yml`, then pulled and tested by `.github/workflows/test-dockerhub.yml`.
 
-- In both flows, the GitHub App token is passed as `GH_TOKEN` so the container can perform authenticated Git operations against `TARGET_REPO`.
+- In both flows, the GitHub App token is passed as `GH_TOKEN` so the container can perform authenticated Git operations against `TARGET_REPO` for actions requiring private repository access such as cloning, committing, or pushing.
 
 ## Setup overview
 
-To use a GitHub App in a workflow:
+To run the **docker test workflows** (`.github/workflows/test-docker.yml` and `.github/workflows/test-dockerhub.yml`), a GitHub App must be created and installed:
 
 1. Create a **GitHub App** in _Developer Settings_
 2. Generate a **private key**
@@ -113,7 +113,7 @@ To use a GitHub App in a workflow:
    - `GH_APPLICATION_ID` (repository variable)
    - `GH_APP_KEY` (repository secret)
 
-The workflow can then generate **installation tokens dynamically**.
+The workflow can then generate **installation tokens dynamically** for authenticated git operations (clone, push, etc.).
 
 ## Docker setup
 
@@ -127,8 +127,8 @@ After completing **Setup overview** above, add the Docker-specific configuration
 ### Workflow order
 
 1. Run `.github/workflows/publish-docker-image.yml` to publish `<DOCKERHUB_USERNAME>/ghapp-test:latest`.
-2. Run `.github/workflows/test-ghapp-docker.yml` to pull and validate the published DockerHub image.
-3. Run `.github/workflows/test-flask.yml` for app tests plus local image build validation.
+2. Run `.github/workflows/test-docker.yml` (manual or on push/PR) to test local Docker build with GitHub App token.
+3. Run `.github/workflows/test-dockerhub.yml` to pull and validate the published DockerHub image with GitHub App token.
 
 ## Notes
 

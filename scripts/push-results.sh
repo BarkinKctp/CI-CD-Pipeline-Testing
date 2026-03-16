@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${MAIN_TEST_OUTCOME:=failure}"
+: "${BUILD_TEST_OUTCOME:=failure}"
 : "${DOCKER_TEST_OUTCOME:=failure}"
+: "${TARGET_REPO:?TARGET_REPO is required}"
+: "${TARGET_BRANCH:?TARGET_BRANCH is required}"
 
 mkdir -p results
-STATUS=$([[ "${MAIN_TEST_OUTCOME}" == "success" ]] && [[ "${DOCKER_TEST_OUTCOME}" == "success" ]] && echo "success" || echo "failure")
+STATUS=$([[ "${BUILD_TEST_OUTCOME}" == "success" ]] && [[ "${DOCKER_TEST_OUTCOME}" == "success" ]] && echo "success" || echo "failure")
 RESULT_FILE="results/test-flask-${GITHUB_RUN_ID}.md"
 printf "# Test Flask Workflow Result\n\n- Status: %s\n- Repository: %s\n- Branch/Ref: %s\n- Run ID: %s\n- Run Number: %s\n- Workflow: %s\n" \
 "$STATUS" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_NUMBER" "$GITHUB_WORKFLOW" > "$RESULT_FILE"
@@ -16,13 +18,8 @@ if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
     exit 0
 fi
 
-if [ ! -f "$RESULT_FILE" ]; then
-    echo "Result file not found: $RESULT_FILE"
-    exit 1
-fi
-
 WORKDIR="$(mktemp -d)"
-git clone "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPO}.git" "$WORKDIR/target"
+git clone https://github.com/${TARGET_REPO}.git "$WORKDIR/target"
 
 mkdir -p "$WORKDIR/target/results"
 cp "$RESULT_FILE" "$WORKDIR/target/$RESULT_FILE"

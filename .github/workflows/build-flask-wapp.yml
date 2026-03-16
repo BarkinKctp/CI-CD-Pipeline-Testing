@@ -12,6 +12,7 @@ env:
 
 on:
   workflow_dispatch:
+  workflow_call:
     inputs:
       webapp_name:
         description: "Azure Web App name"
@@ -32,10 +33,11 @@ on:
         description: "Tag value for lookup."
         required: false
         type: string
-  pull_request:
-    branches:
-      - main
   push:
+    branches:
+    - main
+      
+  pull_request:
     branches:
       - main
 
@@ -52,7 +54,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12" # Python 3.12 is better supported.
-
   
       # Optional (can be used for debugging or if you want to run tests in the build job).
       # If takes longer time, can be moved to a separate test job.
@@ -82,19 +83,9 @@ jobs:
       contents: read #This is required for actions/checkout
 
     steps:
-      - name: Create GitHub App token
-        id: app
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ vars.GH_APPLICATION_ID }}
-          private-key: ${{ secrets.GH_APP_KEY }}
-          owner: ${{ github.repository_owner }}
 
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          token: ${{ steps.app.outputs.token }}
-          clean: false
 
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
@@ -132,43 +123,16 @@ jobs:
       - name: Verify package and create deploy zip
         run: bash scripts/azure-webapp-workflow.sh package_deploy
 
-      - name: Deploy to Azure Web App (attempt 1)
-        id: deploy_to_webapp_attempt_1
-        uses: azure/webapps-deploy@v3
-        continue-on-error: true
-        timeout-minutes: 12
-        with:
-          app-name: ${{ steps.resolveapp.outputs.app_name }}
-          slot-name: Production
-          package: deploy.zip
-
-      - name: Restart app + wait before retry
-        if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
+      - name: Deploy to Azure Web App (with retry)
         env:
           APP_NAME: ${{ steps.resolveapp.outputs.app_name }}
           RESOURCE_GROUP: ${{ steps.preflight.outputs.resource_group }}
-        run: bash scripts/azure-webapp-workflow.sh restart_before_retry
-
-      - name: Deploy to Azure Web App (attempt 2)
-        id: deploy_to_webapp_attempt_2
-        if: steps.deploy_to_webapp_attempt_1.outcome == 'failure'
-        uses: azure/webapps-deploy@v3
-        continue-on-error: true
-        timeout-minutes: 12
-        with:
-          app-name: ${{ steps.resolveapp.outputs.app_name }}
-          slot-name: Production
-          package: deploy.zip
+          MAX_DEPLOY_ATTEMPTS: "2"
+        run: bash scripts/azure-webapp-workflow.sh deploy_with_retry
 
       - name: Configure startup command (Gunicorn) + restart
-        if: steps.deploy_to_webapp_attempt_1.outcome == 'success' || steps.deploy_to_webapp_attempt_2.outcome == 'success'
         env:
           APP_NAME: ${{ steps.resolveapp.outputs.app_name }}
           RESOURCE_GROUP: ${{ steps.preflight.outputs.resource_group }}
         run: bash scripts/azure-webapp-workflow.sh configure_startup
-
-      - name: Fail if deployment did not succeed
-        if: steps.deploy_to_webapp_attempt_1.outcome == 'failure' && steps.deploy_to_webapp_attempt_2.outcome == 'failure'
-        run: |
-          echo "::error::Deployment failed in both attempts."
-          exit 1
+          

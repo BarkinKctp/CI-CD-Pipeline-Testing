@@ -1,8 +1,8 @@
 import os
-import subprocess
 from dataclasses import dataclass
 
 from parameters_validation import non_blank, non_empty, validate_parameters
+from app.validation import run_command
 
 
 @dataclass
@@ -13,16 +13,6 @@ class InputOutputParameters:
     @validate_parameters
     def build(output_dir: non_empty(non_blank(str)) = "artifacts"):
         return InputOutputParameters(output_dir=output_dir)
-
-
-def run_with_output(command: str):
-    return subprocess.run(
-        command,
-        shell=True,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
 
 
 @validate_parameters
@@ -44,10 +34,7 @@ def build_packages(
     )
 
     print(f"Executing docker command: {docker_command}")
-    result = run_with_output(docker_command)
+    result = run_command(docker_command, shell=True, capture_output=True)
 
     if result.stdout:
         print(result.stdout)
-
-    if result.returncode != 0:
-        raise ValueError(result.stderr or result.stdout or "docker run failed")
