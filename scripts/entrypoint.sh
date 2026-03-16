@@ -69,7 +69,7 @@ while [ $ATTEMPT -le $MAX_CLONE_ATTEMPTS ]; do
   
   log "Clone attempt $ATTEMPT of $MAX_CLONE_ATTEMPTS..."
   
-  if git clone --depth 1 "https://github.com/${TARGET_REPO}.git" "${CLONE_TEMP_DIR}" 2>/dev/null; then
+  if git clone --depth 1 "https://github.com/${TARGET_REPO}.git" "${CLONE_TEMP_DIR}"; then
     log "Clone succeeded on attempt $ATTEMPT"
     break
   fi
