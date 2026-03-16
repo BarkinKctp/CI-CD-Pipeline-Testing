@@ -122,15 +122,38 @@ package_deploy() {
   unzip -l "${deploy_zip}" | head -n 60
 }
 
-restart_before_retry() {
+deploy_with_retry() {
   local app_name="${APP_NAME:?APP_NAME is required}"
   local resource_group="${RESOURCE_GROUP:?RESOURCE_GROUP is required}"
+  local deploy_zip="${DEPLOY_ZIP:-deploy.zip}"
+  local max_attempts="${MAX_DEPLOY_ATTEMPTS:-2}"
   local wait_seconds="${WAIT_SECONDS:-20}"
+  local attempt=1
 
-  echo "Attempt 1 failed. Restarting ${app_name} before retry..."
-  az webapp restart --name "${app_name}" --resource-group "${resource_group}" || true
-  echo "Waiting ${wait_seconds}s before retry..."
-  sleep "${wait_seconds}"
+  while [[ "${attempt}" -le "${max_attempts}" ]]; do
+    echo "Deploy attempt ${attempt}/${max_attempts}..."
+
+    if az webapp deploy \
+      --name "${app_name}" \
+      --resource-group "${resource_group}" \
+      --src-path "${deploy_zip}" \
+      --type zip; then
+      echo "Deployment succeeded on attempt ${attempt}."
+      return 0
+    fi
+
+    if [[ "${attempt}" -lt "${max_attempts}" ]]; then
+      echo "Deployment attempt ${attempt} failed. Restarting app before retry..."
+      az webapp restart --name "${app_name}" --resource-group "${resource_group}" || true
+      echo "Waiting ${wait_seconds}s before retry..."
+      sleep "${wait_seconds}"
+    fi
+
+    attempt=$((attempt + 1))
+  done
+
+  echo "::error::Deployment failed in ${max_attempts} attempts."
+  exit 1
 }
 
 configure_startup() {
@@ -159,8 +182,8 @@ case "${mode}" in
   package_deploy)
     package_deploy
     ;;
-  restart_before_retry)
-    restart_before_retry
+  deploy_with_retry)
+    deploy_with_retry
     ;;
   configure_startup)
     configure_startup

@@ -2,9 +2,9 @@
 
 This guide shows how to authenticate GitHub Actions to Azure **without secrets** using **OIDC** and an **Azure App Registration** with a **Flexible Federated Identity Credential (FIC)**.
 
-> Result: GitHub Actions can run `azure/login@v2` using OIDC and then deploy / run Azure CLI commands securely.
-> 
-> Example: `pgbench/*` branch prefix
+> Result: Enable the `.github/workflows/pgbench-test.yml` workflow to automatically deploy on pushes and PRs to `pgbench/*` branches.
+>
+> **Note:** The workflow currently runs on `pgbench/*` branch triggers, but will fail without this OIDC set-up.
 
 ---
 
@@ -32,13 +32,13 @@ Flexible Federated Credentials and Managed Identities solve different parts of t
 
 Key differences:
 
-| Feature | App Registration | Managed Identity |
-|--------|------------------|------------------|
-| Identity type | Service Principal in Azure Entra ID | Identity attached to an Azure resource |
-| Intended use | External workloads (GitHub Actions, CI/CD) | Azure resources accessing other Azure services |
-| Authentication | OIDC token exchanged with Azure Entra ID | Token issued via Azure Instance Metadata Service |
-| Secrets required |  No |  No |
-| Typical use | CI/CD pipelines authenticating to Azure | App Service / VM accessing Key Vault, Storage, etc |
+| Feature          | App Registration                           | Managed Identity                                   |
+| ---------------- | ------------------------------------------ | -------------------------------------------------- |
+| Identity type    | Service Principal in Azure Entra ID        | Identity attached to an Azure resource             |
+| Intended use     | External workloads (GitHub Actions, CI/CD) | Azure resources accessing other Azure services     |
+| Authentication   | OIDC token exchanged with Azure Entra ID   | Token issued via Azure Instance Metadata Service   |
+| Secrets required | No                                         | No                                                 |
+| Typical use      | CI/CD pipelines authenticating to Azure    | App Service / VM accessing Key Vault, Storage, etc |
 
 ---
 
@@ -47,7 +47,6 @@ Key differences:
 - You have an Azure Subscription where you can:
   - Create an App Registration
   - Assign roles (RBAC) at subscription or resource-group scope
-    
 - Your workflow will request OIDC tokens:
   - `permissions: id-token: write`
 
@@ -56,11 +55,13 @@ Key differences:
 ## 1. Create an App Registration
 
 Azure Portal:
+
 1. **Microsoft Entra ID** → **App registrations** → **New registration**
 2. Name it something like: `gh-oidc-ci-cd`
 3. Create it
 
 After creation, note:
+
 - **Application (client) ID**
 - **Directory (tenant) ID**
 - **Subscription ID**
@@ -74,17 +75,18 @@ Repository → Settings → Secrets and variables → Actions
 
 Create the following **repository secrets**:
 
-| Secret Name | Value |
-|-------------|------|
-| AZURE_CLIENT_ID | Application (client) ID |
-| AZURE_TENANT_ID | Directory (tenant) ID |
-| AZURE_SUBSCRIPTION_ID | Azure Subscription ID |
+| Secret Name           | Value                   |
+| --------------------- | ----------------------- |
+| AZURE_CLIENT_ID       | Application (client) ID |
+| AZURE_TENANT_ID       | Directory (tenant) ID   |
+| AZURE_SUBSCRIPTION_ID | Azure Subscription ID   |
 
 ---
 
 ## 3. Create a Flexible Federated Credential (Other Issuer)
 
 Azure Portal:
+
 1. Go to your App Registration
 2. **Certificates & secrets** → **Federated credentials** → **Add credential**
 3. Choose **Other issuer** (for flexible claim matching)
@@ -98,10 +100,10 @@ Use:
   `pgbench-tests-FIC`
 
 - **Subject** (flexible claim matching expression example):
-`claims['sub'] matches 'repo:<repo>:ref:refs/heads/pgbench/*' and claims['job_workflow_ref'] matches '<repo>/.github/workflows/<workflow>@refs/heads/pgbench/*'`
+  `claims['sub'] matches 'repo:<repo>:ref:refs/heads/pgbench/*' and claims['job_workflow_ref'] matches '<repo>/.github/workflows/<workflow>@refs/heads/pgbench/*'`
 
 - **Audience** (recommended for Azure OIDC):
-`api://AzureADTokenExchange`
+  `api://AzureADTokenExchange`
 
 This targets **only** pushes/PRs on branches like `pgbench/*` and only when the workflow file path matches.
 If your repo/workflow path differs, update both parts.
@@ -128,13 +130,12 @@ The App Registration must have permissions in your Azure subscription or resourc
 
 Recommended roles:
 
-| Role | When to use |
-|-----|-----|
-| Reader | Minimum required if pipeline only reads resources |
-| Contributor | Required if pipeline deploys resources |
-| Website Contributor | Deploying to Azure App Service |
-| Web Plan Contributor | Managing App Service Plans |
-
+| Role                 | When to use                                       |
+| -------------------- | ------------------------------------------------- |
+| Reader               | Minimum required if pipeline only reads resources |
+| Contributor          | Required if pipeline deploys resources            |
+| Website Contributor  | Deploying to Azure App Service                    |
+| Web Plan Contributor | Managing App Service Plans                        |
 
 Steps:
 
@@ -178,7 +179,8 @@ permissions:
 
 
 
-```  
+```
+
 ---
 
 ## Troubleshooting
@@ -231,4 +233,3 @@ Official Microsoft documentation on Flexible Federated Identity Credentials:
 
 - Microsoft Learn – Flexible Federated Identity Credentials  
   https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-flexible-federated-identity-credentials
-

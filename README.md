@@ -26,6 +26,7 @@ Simple Flask project for practicing and validating CI/CD workflows.
 - Validate ARM-based infrastructure automation
 - Create a reusable CI/CD template for future projects
 - Includes Docker checks in CI: Local image build test / DockerHub published-image test
+- Centralizes reusable shell logic under `scripts/` for Docker and Azure operations
 
 ![Flask App UI](docs/images/flask-app-example.png)
 
@@ -81,6 +82,13 @@ For GitHub App authentication and Docker workflows, also set:
 - `DOCKERHUB_USERNAME` must be only the Docker Hub account name (example: `brkndocker`).
 - `DOCKERHUB_TOKEN` should be a Docker Hub access token with permission to push images.
 
+**IMPORTANT**
+The Docker test workflows (`.github/workflows/test-docker.yml` and `.github/workflows/test-dockerhub.yml`) require GitHub App authentication to be set up. Without `GH_APP_KEY` and `GH_APPLICATION_ID` configured, these workflows will fail.
+
+Check out this documentation for a guide on Github App authentication and how to safely use GitHub secrets for both OIDC and App token scenarios:
+
+[GitHub App Authentication Example](docs/github-app-example.md)
+
 ### Identity options for OIDC authentication
 
 In this repository the ARM template provisions a **system-assigned managed identity** attached to the Web App.
@@ -91,6 +99,9 @@ In general:
 
 - **App Registration** is typically preferred for **CI/CD pipelines**, since it represents an external workload (e.g., GitHub Actions) authenticating to Azure using OIDC.
 - **Managed Identity** is commonly used by **Azure resources themselves** (VMs, App Service, Functions) to securely access other Azure services such as Key Vault, Storage, or databases.
+
+- **App Registration** with **Flexible Federated Credentials** also allows to
+  run branch-specific workflows without long-lived secrets, by configuring the federated credential to only allow tokens from specific branches or workflows.
 
 See the additional documentation for a step-by-step guide on configuring App Registration with OIDC:
 
@@ -220,24 +231,60 @@ flowchart LR
   2. repo variable `WEBAPP_NAME`
   3. tag lookup (`tag_key` + `tag_value` or repo-name default)
 
+### Test workflows
+
+- `.github/workflows/publish-docker-image.yml`
+  - Manual DockerHub publish workflow using `scripts/push-ghapp-image.sh`.
+
+- `.github/workflows/test-docker.yml`
+  - Builds local Dockerfile and runs Flask app tests **inside the container**.
+  - Validates GitHub App token by running `validation_test.py` in Docker (requires GH_TOKEN and TARGET_REPO env vars).
+  - Writes/pushes test result markdown to target repo via `scripts/push-results.sh`.
+
+- `.github/workflows/test-dockerhub.yml`
+  - Tests GitHub App token authentication **from inside a pre-built DockerHub container**.
+  - Runs `docker_test.py`: pulls pre-built image from DockerHub, executes `entrypoint.sh` for in-container git clone with retry logic.
+- Pushes newly built image only on `main` branch using `scripts/push-ghapp-image.sh`.
+
+### Shared scripts
+
+- `scripts/azure-webapp-workflow.sh`
+  - Shared Azure helper for app resolution, preflight validation, packaging, deployment with retry, and startup configuration.
+
+### GitHub App Token Testing Strategy
+
+The two test workflows validate GitHub App token authentication from **different execution contexts**:
+
+| Workflow               | Test File            | Execution Context   | Git Clone Location               |
+| ---------------------- | -------------------- | ------------------- | -------------------------------- |
+| **test-docker.yml**    | `validation_test.py` | Docker container    | Inside container (from host)     |
+| **test-dockerhub.yml** | `docker_test.py`     | Pre-built container | Inside container (entrypoint.sh) |
+
+This dual-context approach ensures:
+
+- GH_TOKEN works when used directly from GitHub Actions
+- GH_TOKEN works when passed into a pre-built Docker container
+- Git clone with retry logic works inside the container environment
+- Flask app integration tests pass in both local and pre-built images
+
 ### Build and deploy behavior
 
 1. Upload artifact with `app/` and `requirements.txt`
 2. Download to `deploy_pkg`, validate required files
 3. Zip as `deploy.zip`
-4. Deploy attempt 1
-5. On failure: restart app + wait 20s, then deploy attempt 2
-6. On success: set startup command and restart app
+4. Deploy with retry using shared script mode (`deploy_with_retry`)
+5. On success: set startup command and restart app using shared script mode (`configure_startup`)
 
 - Startup command used:
   `gunicorn --bind=0.0.0.0 --timeout 600 app.main:app`
 
 ## Notes
 
-- Prefer manual `workflow_dispatch` when validating Azure changes.
 - Set subscription once per shell and verify with `az account show`.
 - App Service names are globally unique.
 - **Security:** GitHub OIDC only (no long-lived Azure secrets), least-privilege RBAC, and isolated Web App identity.
+- The `.github/workflows/pgbench-test.yml` workflow is triggered via **manual `workflow_dispatch` by default**.
+- To enable automatic deployment on `pgbench/*` branches, set up Azure OIDC authentication using an App Registration with Flexible Federated Credentials (see [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)).
 
 ## Troubleshooting
 
