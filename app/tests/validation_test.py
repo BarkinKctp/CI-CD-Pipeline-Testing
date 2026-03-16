@@ -23,7 +23,6 @@ def test_gh_token_can_clone_target_repo():
         env = os.environ.copy()
         result = subprocess.run(
             ['git', 'clone', '--depth', '1', repo_url, clone_dir],
-            env=env,
             capture_output=True, text=True, check=False,
         )
         assert result.returncode == 0, f'git clone failed for {target_repo}. Exit code: {result.returncode}. stderr: {result.stderr.strip()}'

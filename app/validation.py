@@ -63,8 +63,7 @@ def run_command(command, shell=False, capture_output=True, env=None):
             text=True,
             stdout=subprocess.PIPE if capture_output else None,
             stderr=subprocess.PIPE if capture_output else None,
-            check=True,
-            env=env
+            check=True
         )
         return result
     except subprocess.CalledProcessError as e:
