@@ -13,10 +13,11 @@ def test_gh_token_can_clone_target_repo():
     try:
         env_vars = validate_required_env(['GH_TOKEN', 'TARGET_REPO'])
         target_repo = env_vars['TARGET_REPO']
+        gh_token = env_vars['GH_TOKEN']
     except ValidationError as e:
         pytest.fail(f'Validation failed: {str(e)}')
 
-    repo_url = f'https://github.com/{target_repo}.git'
+    repo_url = f'https://{gh_token}@github.com/{target_repo}.git'
 
     with tempfile.TemporaryDirectory() as temp_dir:
         clone_dir = os.path.join(temp_dir, 'repo-under-test')

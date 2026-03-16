@@ -73,9 +73,10 @@ def push_test_results(target_repo: str, target_branch: str) -> None:
     
     logger.info(f'Wrote test result to {result_file}')
     
+    github_token = os.getenv('GH_TOKEN', '')
     with tempfile.TemporaryDirectory() as workdir:
         target_path = os.path.join(workdir, 'target')
-        run_command(['git', 'clone', f'https://github.com/{target_repo}.git', target_path], 
+        run_command(['git', 'clone', f'https://{github_token}@github.com/{target_repo}.git', target_path], 
                    shell=False, capture_output=True)
         
         os.makedirs(os.path.join(target_path, 'results'), exist_ok=True)
