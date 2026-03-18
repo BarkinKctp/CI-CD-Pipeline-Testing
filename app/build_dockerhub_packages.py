@@ -1,6 +1,5 @@
 import logging
 import os
-import subprocess
 from dataclasses import dataclass
 
 from parameters_validation import non_blank, non_empty, validate_parameters
