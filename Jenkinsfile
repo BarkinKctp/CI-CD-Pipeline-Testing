@@ -72,9 +72,9 @@ pipeline {
                     export PYTHONPATH="$WORKSPACE"
                     export TARGET_REPO="$TARGET_REPO"
                     export DOCKER_TEST_IMAGE="$DOCKER_TEST_IMAGE"
-                    python3 -m pytest -v app/tests/dockerhub_test.py
                     echo "GH_TOKEN in env check:"
                     env | grep -c GH_TOKEN
+                    python3 -m pytest -v app/tests/dockerhub_test.py
                     '''
                 }
             }
