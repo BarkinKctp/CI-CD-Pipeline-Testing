@@ -34,6 +34,7 @@ pipeline {
                         passwordVariable: 'GH_TOKEN'
                     )
                 ]) {
+                    script { env.GH_TOKEN = GH_TOKEN }
                     sh 'git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"'
                     checkout scm
                 }
@@ -65,9 +66,9 @@ pipeline {
                         passwordVariable: 'GH_TOKEN'
                     )
                 ]) {
+                    script { env.GH_TOKEN = GH_TOKEN }
                     sh '''
                     set -e
-                    export GH_TOKEN="$GH_TOKEN"
                     export PYTHONPATH="$WORKSPACE"
                     export TARGET_REPO="$TARGET_REPO"
                     export DOCKER_TEST_IMAGE="$DOCKER_TEST_IMAGE"
