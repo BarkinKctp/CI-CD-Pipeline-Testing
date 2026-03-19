@@ -51,7 +51,7 @@ pipeline {
                     sh '''
                     set -e
                     echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
-                    python3 -m pip install -r requirements.txt
+                    python3 -m pip install -r requirements.txt --break-system-packages
                     '''
                 }
             }
