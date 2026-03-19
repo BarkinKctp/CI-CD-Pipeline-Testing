@@ -72,10 +72,6 @@ pipeline {
                     export PYTHONPATH="$WORKSPACE"
                     export TARGET_REPO="$TARGET_REPO"
                     export DOCKER_TEST_IMAGE="$DOCKER_TEST_IMAGE"
-                    export GH_TOKEN="$GH_TOKEN"
-                    curl -s -H "Authorization: token $GH_TOKEN" \
-                        https://api.github.com/repos/BarkinKctp/ghapp-oidc-deploy-test \
-                        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('full_name', d.get('message', 'unknown')))"
                     python3 -m pytest -v app/tests/dockerhub_test.py
                     '''
                 }
