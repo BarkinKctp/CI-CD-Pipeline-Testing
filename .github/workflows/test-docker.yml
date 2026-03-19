@@ -39,9 +39,9 @@ jobs:
         run: |
           python -m pip install -r requirements.txt
 
-      - name: Build local image, run tests, and push results
+      - name: Run local docker flow test
         env:
           PYTHONPATH: ${{ github.workspace }}
           TARGET_BRANCH: main
-        run: python -m app.build_local_packages
+        run: python -m pytest -v app/tests/docker_local_test.py
           
