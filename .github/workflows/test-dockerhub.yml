@@ -55,4 +55,4 @@ jobs:
         env:
           TARGET_REPO: ${{ env.TARGET_REPO }}
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m app.build_dockerhub_packages
+        run: python -m pytest -v app/tests/dockerhub_test.py

@@ -1,13 +1,8 @@
-import logging
 import os
-import subprocess
-import tempfile
 from dataclasses import dataclass
 
 from parameters_validation import non_blank, non_empty, validate_parameters
-from app.validation import run_command, validate_required_env
-
-logger = logging.getLogger(__name__)
+from app.validation import run_command
 
 
 @dataclass

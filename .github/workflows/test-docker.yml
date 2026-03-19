@@ -43,5 +43,5 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
           TARGET_BRANCH: main
-        run: python -m app.build_local_packages
+        run: python -m pytest -v app/tests/docker_local_test.py
           
