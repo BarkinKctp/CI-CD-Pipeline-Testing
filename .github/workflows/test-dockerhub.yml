@@ -51,7 +51,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Run DockerHub flow test
+      - name: Build, test, and push Docker image (if tests pass)
         env:
           TARGET_REPO: ${{ env.TARGET_REPO }}
           PYTHONPATH: ${{ github.workspace }}
