@@ -34,7 +34,7 @@ pipeline {
                         passwordVariable: 'GH_TOKEN'
                     )
                 ]) {
-                    sh "git config --global url.\"https://x-access-token:${GH_TOKEN}@github.com/\".insteadOf \"https://github.com/\""
+                    sh 'git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"'
                     checkout scm
                 }
             }
@@ -51,7 +51,7 @@ pipeline {
                     sh '''
                     set -e
                     echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
-                    python3 -m pip install -r requirements.txt --break-system-packages
+                    python3 -m pip install -r requirements.txt --break-system-packages 
                     '''
                 }
             }
@@ -67,6 +67,7 @@ pipeline {
                 ]) {
                     sh '''
                     set -e
+                    export GH_TOKEN="$GH_TOKEN"
                     export PYTHONPATH="$WORKSPACE"
                     export TARGET_REPO="$TARGET_REPO"
                     export DOCKER_TEST_IMAGE="$DOCKER_TEST_IMAGE"
