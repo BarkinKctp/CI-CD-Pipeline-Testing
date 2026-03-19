@@ -62,20 +62,14 @@ pipeline {
                         credentialsId: 'ghapp-creds',
                         usernameVariable: 'GITHUB_APP',
                         passwordVariable: 'GH_TOKEN'
-                    ),
-                    usernamePassword(
-                        credentialsId: 'jenkins-docker-login',
-                        usernameVariable: 'DOCKERHUB_USERNAME',
-                        passwordVariable: 'DOCKERHUB_TOKEN'
                     )
                 ]) {
                     sh '''
                     set -e
-                    echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
                     export PYTHONPATH="$WORKSPACE"
                     export TARGET_REPO="$TARGET_REPO"
                     export DOCKER_TEST_IMAGE="$DOCKER_TEST_IMAGE"
-                    python3 -m pytest -v app/tests/docker_test.py
+                    python3 -m pytest -v app/tests/dockerhub_test.py
                     '''
                 }
             }

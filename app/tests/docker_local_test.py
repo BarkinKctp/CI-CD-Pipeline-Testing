@@ -11,7 +11,6 @@ from app.validation import ValidationError, format_env_error, validate_required_
 logger = logging.getLogger(__name__)
 
 
-# pyright: reportInvalidTypeForm=false
 @validate_parameters
 def _validate_local_flow_inputs(
     gh_token: non_empty(non_blank(str)),
