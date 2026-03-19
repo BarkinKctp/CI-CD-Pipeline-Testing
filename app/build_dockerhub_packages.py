@@ -26,7 +26,7 @@ def build_image(
 
 
 @validate_parameters
-def test_image(
+def run_image_tests(
     github_token: non_empty(non_blank(str)),
     target_repo: non_empty(non_blank(str)),
     docker_image: non_empty(non_blank(str)),

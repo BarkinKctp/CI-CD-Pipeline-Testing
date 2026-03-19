@@ -1,8 +1,10 @@
 import os
+import subprocess
+import tempfile
 from dataclasses import dataclass
 
 from parameters_validation import non_blank, non_empty, validate_parameters
-from app.validation import run_command
+from app.validation import run_command, validate_required_env
 
 
 @dataclass
@@ -43,7 +45,6 @@ def push_test_results(target_repo: str, target_branch: str) -> None:
     """Push test results to target repository."""
     github_event = os.environ.get('GITHUB_EVENT_NAME', '')
     if github_event == 'pull_request':
-        logger.info('Pull request event detected. Skipping push to target repo.')
         return
 
     github_run_id = os.environ.get('GITHUB_RUN_ID', 'unknown')
@@ -66,8 +67,6 @@ def push_test_results(target_repo: str, target_branch: str) -> None:
 - Workflow: {github_workflow}
 ''')
     
-    logger.info(f'Wrote test result to {result_file}')
-    
     with tempfile.TemporaryDirectory() as workdir:
         target_path = os.path.join(workdir, 'target')
         run_command(['git', 'clone', f'https://github.com/{target_repo}.git', target_path], 
@@ -82,38 +81,30 @@ def push_test_results(target_repo: str, target_branch: str) -> None:
             with open(result_file, 'r') as src:
                 f.write(src.read())
         
-        os.chdir(target_path)
-        run_command(['git', 'config', 'user.name', 'github-actions[bot]'], 
+        run_command(['git', '-C', target_path, 'config', 'user.name', 'github-actions[bot]'], 
                    shell=False, capture_output=True)
-        run_command(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], 
+        run_command(['git', '-C', target_path, 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], 
                    shell=False, capture_output=True)
-        run_command(['git', 'checkout', target_branch], 
+        run_command(['git', '-C', target_path, 'checkout', target_branch], 
                    shell=False, capture_output=True)
-        run_command(['git', 'add', result_file], 
+        run_command(['git', '-C', target_path, 'add', result_file], 
                    shell=False, capture_output=True)
         
-        diff = subprocess.run(['git', 'diff', '--cached', '--quiet'], capture_output=True)
+        diff = subprocess.run(['git', '-C', target_path, 'diff', '--cached', '--quiet'], capture_output=True)
         if diff.returncode == 0:
-            logger.info('No result changes to push.')
             return
         
-        run_command(['git', 'commit', '-m', f'Add test result for run {github_run_id}'], 
+        run_command(['git', '-C', target_path, 'commit', '-m', f'Add test result for run {github_run_id}'], 
                    shell=False, capture_output=True)
-        run_command(['git', 'push', 'origin', target_branch], 
+        run_command(['git', '-C', target_path, 'push', 'origin', target_branch], 
                    shell=False, capture_output=True)
-        logger.info(f'Pushed {result_file} to {target_repo}:{target_branch}')
 
 
 def run_build_packages():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    validate_required_env(['GH_TOKEN', 'TARGET_REPO'])
-    
-    github_token = os.environ['GH_TOKEN']
-    target_repo = os.environ['TARGET_REPO']
+    env_vars = validate_required_env(['GH_TOKEN', 'TARGET_REPO'])
+
+    github_token = env_vars['GH_TOKEN']
+    target_repo = env_vars['TARGET_REPO']
     target_branch = os.environ.get('TARGET_BRANCH', 'main')
     docker_image = os.environ.get('DOCKER_IMAGE', 'flask-app-test')
     

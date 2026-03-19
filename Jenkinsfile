@@ -11,8 +11,9 @@ pipeline {
 
     parameters {
         string(name: 'TARGET_REPO', defaultValue: 'BarkinKctp/ghapp-oidc-deploy-test', description: 'Repository cloned by container (owner/repo)')
-        string(name: 'DOCKER_TEST_IMAGE', defaultValue: 'brkndocker/ghapp-test:latest', description: 'Docker image used by app/tests/docker_test.py')
-    }
+        string(name: 'DOCKER_TEST_IMAGE', defaultValue: 'brkndocker/ghapp-test:latest', description: 'Docker image used by app/tests/dockerhub_test.py')
+        string(name: 'GH_CREDENTIALS_ID', defaultValue: 'ghapp-creds', description: 'Jenkins credential ID for your GitHub App (must be GitHub App type)')
+}
 
     options {
         timestamps()
@@ -28,12 +29,12 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'ghapp-creds',
+                        credentialsId: params.GH_CREDENTIALS_ID, // GitHub App credentials
                         usernameVariable: 'GITHUB_APP',
                         passwordVariable: 'GH_TOKEN'
                     )
                 ]) {
-                    sh 'git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"'
+                    sh "git config --global url.\"https://x-access-token:${GH_TOKEN}@github.com/\".insteadOf \"https://github.com/\""
                     checkout scm
                 }
             }
@@ -42,7 +43,7 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'jenkins-docker-login',
+                        credentialsId: 'jenkins-docker-login', // Docker Hub credentials
                         usernameVariable: 'DOCKERHUB_USERNAME',
                         passwordVariable: 'DOCKERHUB_TOKEN'
                     )
@@ -59,7 +60,7 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'ghapp-creds',
+                        credentialsId: params.GH_CREDENTIALS_ID, // GitHub App credentials
                         usernameVariable: 'GITHUB_APP',
                         passwordVariable: 'GH_TOKEN'
                     )

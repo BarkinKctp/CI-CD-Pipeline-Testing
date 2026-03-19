@@ -6,7 +6,7 @@ from app.build_dockerhub_packages import (
     InputOutputParameters,
     build_image,
     push_image,
-    test_image,
+    run_image_tests,
 )
 from app.validation import get_required_env, ValidationError, format_env_error
 
@@ -49,7 +49,7 @@ def test_build_packages():
 
     logger.info("Building, testing, and pushing Docker image")
     build_image(dockerfile_path=dockerfile_path, docker_image=docker_image)
-    test_image(
+    run_image_tests(
         github_token=gh_token,
         target_repo=target_repo,
         docker_image=docker_image,
