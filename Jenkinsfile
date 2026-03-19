@@ -69,6 +69,8 @@ pipeline {
                     script { env.GH_TOKEN = GH_TOKEN }
                     sh '''
                     set -e
+                        echo "Token length: ${#GH_TOKEN}"
+                    export GH_TOKEN="$GH_TOKEN"
                     export PYTHONPATH="$WORKSPACE"
                     export TARGET_REPO="$TARGET_REPO"
                     export DOCKER_TEST_IMAGE="$DOCKER_TEST_IMAGE"
