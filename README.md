@@ -3,6 +3,8 @@
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Azure](https://img.shields.io/badge/azure-app%20service-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-black)
+![Jenkins](https://img.shields.io/badge/CI%2FCD-Jenkins-D24939?logo=jenkins&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-hub-2496ED?logo=docker&logoColor=white)
 
 Simple Flask project for practicing and validating CI/CD workflows.
 
@@ -27,6 +29,7 @@ Simple Flask project for practicing and validating CI/CD workflows.
 - Create a reusable CI/CD template for future projects
 - Includes Docker checks in CI: Local image build test / DockerHub published-image test
 - Centralizes reusable shell logic under `scripts/` for Docker and Azure operations
+- Includes a Jenkins pipeline (`Jenkinsfile`) that replicates the DockerHub test flow as an alternative CI option
 
 ![Flask App UI](docs/images/flask-app-example.png)
 
@@ -234,31 +237,35 @@ flowchart LR
 ### Test workflows
 
 - `.github/workflows/publish-docker-image.yml`
-  - Manual DockerHub publish workflow using `scripts/push-ghapp-image.sh`.
+  - Builds and pushes the Jenkins Agent image (`brkndocker/jenkins-agent`) to Docker Hub.
 
 - `.github/workflows/test-docker.yml`
-  - Builds local Dockerfile and runs Flask app tests **inside the container**.
-  - Validates GitHub App token by running `validation_test.py` in Docker (requires GH_TOKEN and TARGET_REPO env vars).
-  - Writes/pushes test result markdown to target repo via `scripts/push-results.sh`.
+  - Builds a local Docker image and runs the full local flow via `app/tests/docker_local_test.py`.
+  - Validates GitHub App token authentication (requires `GH_TOKEN` and `TARGET_REPO` env vars).
+  - Pushes test result markdown to the target repository directly from within the test (skipped on pull request events).
 
 - `.github/workflows/test-dockerhub.yml`
-  - Tests GitHub App token authentication **from inside a pre-built DockerHub container**.
-  - Runs `docker_test.py`: pulls pre-built image from DockerHub, executes `entrypoint.sh` for in-container git clone with retry logic.
-- Pushes newly built image only on `main` branch using `scripts/push-ghapp-image.sh`.
+  - Builds `brkndocker/ghapp-test` from `docker/dockerhub-image/Dockerfile` and runs in-container tests via `app/tests/dockerhub_test.py`.
+  - Builds, tests, and pushes the image (including a SHA-tagged version) on each successful run.
+
+- Alternative CI pipeline: `Jenkinsfile` — replicates the DockerHub test flow outside of GitHub Actions using a Docker agent. See [Jenkins Configuration](docs/jenkins-configuration.md) for setup instructions.
 
 ### Shared scripts
 
 - `scripts/azure-webapp-workflow.sh`
   - Shared Azure helper for app resolution, preflight validation, packaging, deployment with retry, and startup configuration.
 
+- `scripts/entrypoint.sh`
+  - Container entrypoint used inside the DockerHub image (`brkndocker/ghapp-test`) for authenticated git clone with retry logic.
+
 ### GitHub App Token Testing Strategy
 
 The two test workflows validate GitHub App token authentication from **different execution contexts**:
 
-| Workflow               | Test File            | Execution Context   | Git Clone Location               |
-| ---------------------- | -------------------- | ------------------- | -------------------------------- |
-| **test-docker.yml**    | `validation_test.py` | Docker container    | Inside container (from host)     |
-| **test-dockerhub.yml** | `docker_test.py`     | Pre-built container | Inside container (entrypoint.sh) |
+| Workflow               | Test File              | Execution Context       | Git Clone Location               |
+| ---------------------- | ---------------------- | ----------------------- | -------------------------------- |
+| **test-docker.yml**    | `docker_local_test.py` | GitHub Actions runner   | Inside container (from host)     |
+| **test-dockerhub.yml** | `dockerhub_test.py`    | Freshly built container | Inside container (entrypoint.sh) |
 
 This dual-context approach ensures:
 
@@ -283,8 +290,8 @@ This dual-context approach ensures:
 - Set subscription once per shell and verify with `az account show`.
 - App Service names are globally unique.
 - **Security:** GitHub OIDC only (no long-lived Azure secrets), least-privilege RBAC, and isolated Web App identity.
-- The `.github/workflows/pgbench-test.yml` workflow is triggered via **manual `workflow_dispatch` by default**.
-- To enable automatic deployment on `pgbench/*` branches, set up Azure OIDC authentication using an App Registration with Flexible Federated Credentials (see [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)).
+- The `.github/workflows/pgbench-test.yml` workflow triggers automatically on push and pull requests to `pgbench/*` branches, and also supports manual `workflow_dispatch` (with optional `webapp_name` and `resource_group` inputs).
+- For `pgbench/*` branch-based deployments to work with OIDC, configure an App Registration with Flexible Federated Credentials (see [Flexible Federated Credential Setup](docs/flexible-federated-credential-setup.md)).
 
 ## Troubleshooting
 
@@ -304,6 +311,9 @@ Detailed guides related to this CI/CD setup:
 
 - [GitHub App Authentication Example](docs/github-app-example.md)  
   Overview of GitHub App authentication in GitHub Actions, explaining how it differs from PATs, how App tokens differ from the auto-generated `GITHUB_TOKEN`, and how to safely use both for secure cross-repository automation.
+
+- [Jenkins Configuration](docs/jenkins-configuration.md)  
+  Step-by-step guide for setting up a local Jenkins instance with Docker-in-Docker, configuring the Docker Cloud agent, creating the required credentials, and running the `Jenkinsfile` pipeline.
 
 ### References
 
