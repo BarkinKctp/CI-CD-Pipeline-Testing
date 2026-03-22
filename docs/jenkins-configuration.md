@@ -1,12 +1,14 @@
 # Jenkins Configuration Guide
 
+> **Note:** This guide assumes you have a GitHub App set up. If you haven't created one yet, see [github-app-example.md](github-app-example.md) first.
+
 ---
 
 ## 1. Prerequisites
 
 - Docker Desktop installed and running on your machine
 - A Docker Hub account (if pushing/pulling private images)
-- (Optional) A GitHub App configured for webhook-based builds
+- A GitHub App configured with appropriate permissions for your repositories
 
 ---
 
@@ -82,37 +84,7 @@ docker exec jenkins sh -c "curl -s --cacert /certs/ca.pem --cert /certs/cert.pem
 
 1. Go to **Manage Jenkins → Clouds → New Cloud → Docker**
 2. Set **Docker Host URI**: `tcp://docker:2376`
-3. Set **Server credentials** to the TLS credentials (see step below)
-
-### Export TLS Certificates (for Jenkins Docker Cloud credentials)
-
-```powershell
-docker run --rm `
-  -v jenkins-docker-certs:/certs `
-  -v "C:\Users\barki\Desktop:/output" `
-  alpine sh -c "cp /certs/cert.pem /output/ && cp /certs/key.pem /output/ && cp /certs/ca.pem /output/"
-```
-
-Then in Jenkins, create an **X.509 Client Certificate** credential with all three files:
-
-1. Go to **Manage Jenkins → Credentials → Add Credentials**
-2. Kind: **X.509 Client Certificate**
-3. ID: `docker-tls-certs`
-4. Upload the three certificate files:
-   - **Client Key File**: `key.pem`
-   - **Client Certificate File**: `cert.pem`
-   - **CA Certificate File**: `ca.pem`
-5. Click **Create**
-
-> **Important:** Jenkins requires **all three files** (`key.pem`, `cert.pem`, and `ca.pem`) to establish a secure connection to the DinD container. The certificate type must be **X.509 Client Certificate**.
-
-Then in the Docker Cloud config reference this credential ID.
-
-### Configure Docker Cloud
-
-1. Go to **Manage Jenkins → Clouds → New Cloud → Docker**
-2. Set **Docker Host URI**: `tcp://docker:2376`
-3. Set **Server credentials**: Select the `docker-tls-certs` credential you just created
+3. Set **Server credentials**: Select the `docker-tls-certs` credential created in [Step 8](#8-configure-credentials-in-jenkins)
 4. Click **Test Connection** to verify it works
 5. Click **Save**
 
@@ -120,25 +92,26 @@ Then in the Docker Cloud config reference this credential ID.
 
 After setting up the Docker Cloud connection, you need an **agent template** so Jenkins can spin up containers to run builds.
 
-> This project includes a custom agent image with Python and related tooling for running commands such as `pytest`.
->
-> The image is **public on Docker Hub** and can be pulled directly:
->
-> ```powershell
-> docker pull brkndocker/jenkins-agent:latest
-> ```
->
-> Alternatively, you can build and push your own copy of the image.
+![Docker Cloud Agent Template example](images/jenkins-certs-example.png)
+
+> This project uses a custom agent image with Python tooling for running `pytest`. It is **public on Docker Hub** (`brkndocker/jenkins-agent:latest`). You can also build and push your own copy.
 
 1. Inside the Docker Cloud config, click **Docker Agent templates → Add Docker Template**
 2. Configure the following:
-   - **Labels**: `docker-agent`
+   - **Labels**: `docker`
    - **Enabled**: Checked
+   - **Name**: `dind-agent` (example)
    - **Docker Image**: `brkndocker/jenkins-agent:latest`
+   - **Registry Authentication → Credentials**: Select your Docker Hub credential (`jenkins-docker-login`) so the agent can pull from Docker Hub
    - **Remote File System Root**: `/home/jenkins/agent`
    - **Connect method**: **Attach Docker container**
    - **Pull strategy**: **Pull once and update latest**
+   - **Volumes**: `/var/run/docker.sock:/var/run/docker.sock`
+   - **Instance Capacity**: `2` (recommended in this example to reduce overload risk)
+
 3. Click **Save**
+
+> **Important:** The Jenkinsfile uses label `docker`, so the template label must match.
 
 ### Use Custom Agent Image (Optional)
 
@@ -160,6 +133,42 @@ Then update the agent template **Docker Image** to: `<yourdockerhubname>/jenkins
 
 ## 8. Configure Credentials in Jenkins
 
+Create all Jenkins credentials in this section before running pipeline jobs.
+
+### Docker TLS Credentials (required for Docker Cloud)
+
+Export the TLS certificate files from the DinD volume:
+
+```powershell
+docker run --rm `
+  -v jenkins-docker-certs:/certs `
+  -v "C:\Users\barki\Desktop:/output" `
+  alpine sh -c "cp /certs/cert.pem /output/ && cp /certs/key.pem /output/ && cp /certs/ca.pem /output/"
+```
+
+Verify the files exist before continuing:
+
+```powershell
+ls C:\Users\barki\Desktop\*.pem
+```
+
+If no files appear, change the `-v` output path in the export command (e.g. `C:\Users\barki\Downloads`) and rerun it.
+
+Then create an **X.509 Client Certificate** credential in Jenkins:
+
+![Add Credentials dialog](images/jenkins-certs.png)
+
+1. Go to **Manage Jenkins → Credentials → Add Credentials**
+2. Kind: **X.509 Client Certificate**
+3. ID: `docker-tls-certs`
+4. Upload:
+   - **Client Key File**: `key.pem`
+   - **Client Certificate File**: `cert.pem`
+   - **CA Certificate File**: `ca.pem`
+5. Click **Create**
+
+> **Important:** Jenkins requires all three files (`key.pem`, `cert.pem`, and `ca.pem`) for secure TLS communication with the DinD container.
+
 ### Docker Hub Credentials (for private registries)
 
 1. Go to **Manage Jenkins → Credentials → Add Credentials**
@@ -168,20 +177,26 @@ Then update the agent template **Docker Image** to: `<yourdockerhubname>/jenkins
 4. Username: Docker Hub username
 5. Password: Docker Hub access token
 
-> **Note:** The Jenkinsfile references `jenkins-docker-login` as the credential ID. The Jenkinsfile is hardcoded to use `jenkins-docker-login` as the credential ID, so you must name it exactly that and fill it with your Docker Hub credentials to be able to push or pull private images.
+> **Note:** The credential ID must be exactly `jenkins-docker-login` — the Jenkinsfile is hardcoded to use this ID.
 
-### GitHub App Credentials (optional, for GitHub App integration)
+### GitHub App Credentials (required for this workflow)
 
 1. Go to **Manage Jenkins → Credentials → Add Credentials**
 2. Kind: **GitHub App**
 3. ID: `ghapp-creds`
 4. Fill in: **App ID**, **Private Key**, and **Installation ID**
+5. In the GitHub App installation settings, set **Repository access** to include:
+   - This pipeline repository (contains `Jenkinsfile`)
+   - The repository used by `TARGET_REPO`
+6. If using **Only select repositories**, add them explicitly before running the pipeline.
 
-> **Important:** Jenkins requires the private key in **PKCS#8 format**. Convert it if needed:
+> **Important:** The private key must be in **PKCS#8 format**. Convert if needed:
 >
 > ```powershell
 > openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in <your-key>.pem -out new.pem
 > ```
+
+> **Important:** If required repositories are not included in the GitHub App installation access list, pipeline checkout/test stages can fail with credential/token errors, including `f args` or `not found` errors.
 
 ### Using GitHub App Credentials in a Jenkinsfile
 
@@ -196,6 +211,58 @@ withCredentials([
     // Your steps that require GitHub App authentication
 }
 ```
+
+---
+
+## 9. Create the Jenkins Pipeline Job (with Parameters)
+
+This repository's Jenkins pipeline is defined in `Jenkinsfile` and includes runtime parameters.
+
+1. Go to **Dashboard → New Item**
+2. Enter a job name (example: `ghapp-dockerhub-pipeline`)
+3. Select **Pipeline**
+4. Click **OK**
+5. In **General**, optionally enable **GitHub project** and add your repo URL
+6. In **Build Triggers**, choose one of the following:
+   - **GitHub hook trigger for GITScm polling** (for webhook-driven builds)
+   - **Poll SCM** (if you prefer periodic polling)
+7. In **Pipeline**, set:
+   - **Definition**: **Pipeline script from SCM**
+   - **SCM**: **Git**
+   - **Repository URL**: Your repository URL (HTTPS)
+   - **Credentials**: Select your GitHub App credential (`ghapp-creds`) if required for private access
+   - **Branch Specifier**: `*/main` (or your branch)
+   - **Script Path**: `Jenkinsfile`
+8. Click **Save**
+
+> **Note:** If Jenkins shows an "Oops!" error or the credential dropdown does not list `ghapp-creds`, restart Jenkins (`docker restart jenkins`) and try again — newly added credentials sometimes require a restart to load.
+
+![Jenkins Oops error - credential not recognized during pipeline setup](images/jenkins-pipeline.png)
+
+### Pipeline Parameters Used by this Jenkinsfile
+
+The following parameters are defined in `Jenkinsfile` and appear in **Build with Parameters**:
+
+1. `TARGET_REPO`
+   - Default: `BarkinKctp/ghapp-oidc-deploy-test`
+   - Purpose: Repository used by test flow inside the container
+2. `DOCKER_TEST_IMAGE`
+   - Default: `brkndocker/ghapp-test:latest`
+   - Purpose: Docker image consumed by `app/tests/dockerhub_test.py`
+3. `GH_CREDENTIALS_ID`
+   - Default: `ghapp-creds`
+   - Purpose: Jenkins credential ID used for GitHub App auth in pipeline stages
+
+> **Important:** On first run, Jenkins may not show parameters until it reads the Jenkinsfile from SCM. If **Build with Parameters** is missing, run the job once, then reopen the job page.
+
+### Run Checklist
+
+Before running **Build with Parameters**, verify:
+
+1. Docker Cloud connection is green (Step 7)
+2. Docker template label is `docker`
+3. Credentials exist: `docker-tls-certs`, `jenkins-docker-login`, and `ghapp-creds`
+4. Pipeline SCM points to this repo and `Jenkinsfile`
 
 ---
 
@@ -283,6 +350,23 @@ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
   docker push <yourdockerhubname>/jenkins-agent:latest
   ```
 
+### Jenkins shows "Oops!" error during pipeline setup
+
+**Symptom:** "Oops! A problem occurred while processing the request" when saving pipeline or selecting credentials.
+
+- A newly created credential has not been fully loaded yet.
+- **Fix:** `docker restart jenkins`, then reopen the job and complete the SCM setup.
+
+### GitHub App auth fails with `access` error
+
+- Confirm the Jenkins GitHub App credential (`ghapp-creds`) uses the correct **App ID**, **Installation ID**, and **private key**.
+- In GitHub, open the app installation and verify **Repository access** includes:
+  - This pipeline repo
+  - The repository in `TARGET_REPO`
+- If the Jenkins pipeline error says it cannot access the target repo, check the GitHub App used by Jenkins credential `ghapp-creds` and ensure the app installation includes the `TARGET_REPO` repository.
+- If you changed app access, reinstall/update the app installation and rerun the pipeline.
+- Ensure the pipeline parameter `GH_CREDENTIALS_ID` still points to `ghapp-creds` (or your actual credential ID).
+
 ### Port 8080 already in use
 
 **Symptom:** `Bind for 0.0.0.0:8080 failed: port is already allocated`
@@ -319,3 +403,11 @@ docker network rm jenkins
 ```
 
 Then re-run from [Step 2](#2-build-the-custom-jenkins-image).
+
+---
+
+## References
+
+- [Jenkins Credentials documentation](https://www.jenkins.io/doc/book/using/using-credentials/)
+- [GitHub App authentication for Jenkins](https://www.jenkins.io/blog/2020/04/16/github-app-authentication/)
+- [GitHub App installation permissions](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app)

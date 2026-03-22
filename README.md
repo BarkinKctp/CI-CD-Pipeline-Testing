@@ -92,6 +92,10 @@ Check out this documentation for a guide on Github App authentication and how to
 
 [GitHub App Authentication Example](docs/github-app-example.md)
 
+To replicate the DockerHub test flow outside of GitHub Actions using a local Jenkins pipeline, see:
+
+[Jenkins Configuration](docs/jenkins-configuration.md)
+
 ### Identity options for OIDC authentication
 
 In this repository the ARM template provisions a **system-assigned managed identity** attached to the Web App.
